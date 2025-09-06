@@ -695,7 +695,22 @@ CREATE TABLE social (
 );
 ```
 
-### 16. Bảng Media (Quản lý file, hình ảnh)
+### 16. Bảng User_Settings (Cài đặt người dùng)
+```sql
+CREATE TABLE user_settings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    userId UUID REFERENCES users(id) ON DELETE CASCADE,
+    settingType VARCHAR(50) NOT NULL, -- 'notification', 'security', 'privacy', 'preference'
+    settingKey VARCHAR(100) NOT NULL, -- 'email_notifications', 'two_factor_auth', 'profile_visibility'
+    settingValue JSONB NOT NULL, -- Giá trị cài đặt
+    isActive BOOLEAN DEFAULT true,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(userId, settingType, settingKey)
+);
+```
+
+### 17. Bảng Media (Quản lý file, hình ảnh)
 ```sql
 CREATE TABLE media (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -837,6 +852,12 @@ CREATE INDEX idx_social_author_id ON social(authorId);
 CREATE INDEX idx_social_club_id ON social(clubId);
 CREATE INDEX idx_social_type ON social(type);
 CREATE INDEX idx_social_is_deleted ON social(isDeleted);
+
+-- User Settings
+CREATE INDEX idx_user_settings_user_id ON user_settings(userId);
+CREATE INDEX idx_user_settings_type ON user_settings(settingType);
+CREATE INDEX idx_user_settings_key ON user_settings(settingKey);
+CREATE INDEX idx_user_settings_active ON user_settings(isActive);
 
 -- Media
 CREATE INDEX idx_media_uploaded_by ON media(uploadedBy);

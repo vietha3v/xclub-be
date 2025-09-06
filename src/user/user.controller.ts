@@ -2,6 +2,7 @@ import {
   Controller, 
   Get, 
   Post, 
+  Put,
   Body, 
   Patch, 
   Param, 
@@ -23,6 +24,8 @@ import {
 import { UserService, UserProfileResponse } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { NotificationSettingsDto } from './dto/notification-settings.dto';
+import { SecuritySettingsDto } from './dto/security-settings.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -102,6 +105,48 @@ export class UserController {
     @Query('experience') experience?: UserExperience
   ): Promise<{ users: UserProfileResponse[]; total: number; page: number; limit: number }> {
     return this.userService.findAll(page, limit, search, status, experience, req.user?.userId);
+  }
+
+  /**
+   * Lấy thông tin user hiện tại
+   */
+  @Get('me')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ 
+    summary: 'Lấy thông tin user hiện tại',
+    description: 'Lấy thông tin chi tiết của user hiện tại'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Lấy thông tin user thành công',
+    type: User
+  })
+  @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
+  async getCurrentUser(@Req() req: any): Promise<User> {
+    return this.userService.findOne(req.user.userId);
+  }
+
+  /**
+   * Cập nhật thông tin user hiện tại
+   */
+  @Put('me')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ 
+    summary: 'Cập nhật thông tin user hiện tại',
+    description: 'Cập nhật thông tin của user hiện tại'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Cập nhật thành công',
+    type: User
+  })
+  @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
+  @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
+  async updateCurrentUser(
+    @Body() updateUserDto: UpdateUserDto,
+    @Req() req: any
+  ): Promise<User> {
+    return this.userService.update(req.user.userId, updateUserDto, req.user.userId);
   }
 
   /**
@@ -315,4 +360,87 @@ export class UserController {
       createdAt: user.createdAt,
     };
   }
+
+
+
+  /**
+   * Lấy cài đặt thông báo của user hiện tại
+   */
+  @Get('me/notifications')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ 
+    summary: 'Lấy cài đặt thông báo',
+    description: 'Lấy cài đặt thông báo của user hiện tại'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Lấy cài đặt thông báo thành công'
+  })
+  @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
+  async getNotificationSettings(@Req() req: any): Promise<any> {
+    return this.userService.getNotificationSettings(req.user.userId);
+  }
+
+  /**
+   * Cập nhật cài đặt thông báo của user hiện tại
+   */
+  @Put('me/notifications')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ 
+    summary: 'Cập nhật cài đặt thông báo',
+    description: 'Cập nhật cài đặt thông báo của user hiện tại'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Cập nhật cài đặt thông báo thành công'
+  })
+  @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
+  @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
+  async updateNotificationSettings(
+    @Body() settings: NotificationSettingsDto,
+    @Req() req: any
+  ): Promise<any> {
+    return this.userService.updateNotificationSettings(req.user.userId, settings);
+  }
+
+  /**
+   * Lấy cài đặt bảo mật của user hiện tại
+   */
+  @Get('me/security')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ 
+    summary: 'Lấy cài đặt bảo mật',
+    description: 'Lấy cài đặt bảo mật của user hiện tại'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Lấy cài đặt bảo mật thành công'
+  })
+  @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
+  async getSecuritySettings(@Req() req: any): Promise<any> {
+    return this.userService.getSecuritySettings(req.user.userId);
+  }
+
+  /**
+   * Cập nhật cài đặt bảo mật của user hiện tại
+   */
+  @Put('me/security')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ 
+    summary: 'Cập nhật cài đặt bảo mật',
+    description: 'Cập nhật cài đặt bảo mật của user hiện tại'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Cập nhật cài đặt bảo mật thành công'
+  })
+  @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
+  @ApiResponse({ status: 401, description: 'Chưa đăng nhập' })
+  async updateSecuritySettings(
+    @Body() settings: SecuritySettingsDto,
+    @Req() req: any
+  ): Promise<any> {
+    return this.userService.updateSecuritySettings(req.user.userId, settings);
+  }
+
 }

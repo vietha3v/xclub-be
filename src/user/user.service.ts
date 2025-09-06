@@ -4,6 +4,9 @@ import { Repository, Like, FindOptionsWhere } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User, UserStatus, UserExperience } from './entities/user.entity';
+import { UserSettings, SettingType } from './entities/user-settings.entity';
+import { NotificationSettingsDto } from './dto/notification-settings.dto';
+import { SecuritySettingsDto } from './dto/security-settings.dto';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UserProfileResponse {
@@ -45,6 +48,8 @@ export class UserService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(UserSettings)
+    private userSettingsRepository: Repository<UserSettings>,
   ) {}
 
   /**
@@ -415,5 +420,187 @@ export class UserService {
     } catch (error) {
       throw error;
     }
+  }
+
+  /**
+   * Lấy cài đặt thông báo của user
+   */
+  async getNotificationSettings(userId: string): Promise<any> {
+    try {
+      const user = await this.findOne(userId);
+      
+      // Lấy cài đặt thông báo từ database
+      const settings = await this.userSettingsRepository.find({
+        where: {
+          userId,
+          settingType: SettingType.NOTIFICATION,
+          isActive: true
+        }
+      });
+
+      // Nếu chưa có cài đặt, trả về mặc định
+      if (settings.length === 0) {
+        return this.getDefaultNotificationSettings();
+      }
+
+      // Chuyển đổi từ database format sang response format
+      const result: any = {};
+      settings.forEach(setting => {
+        result[setting.settingKey] = setting.settingValue;
+      });
+
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Cập nhật cài đặt thông báo của user
+   */
+  async updateNotificationSettings(userId: string, settings: NotificationSettingsDto): Promise<any> {
+    try {
+      const user = await this.findOne(userId);
+      
+      // Lưu từng loại cài đặt vào database
+      const settingsToSave = [
+        { key: 'emailNotifications', value: settings.emailNotifications },
+        { key: 'pushNotifications', value: settings.pushNotifications },
+        { key: 'frequency', value: settings.frequency },
+        { key: 'quietHours', value: settings.quietHours }
+      ];
+
+      for (const setting of settingsToSave) {
+        await this.userSettingsRepository.upsert({
+          userId,
+          settingType: SettingType.NOTIFICATION,
+          settingKey: setting.key,
+          settingValue: setting.value as any,
+          isActive: true
+        }, ['userId', 'settingType', 'settingKey']);
+      }
+
+      return {
+        message: 'Cập nhật cài đặt thông báo thành công',
+        settings
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Lấy cài đặt bảo mật của user
+   */
+  async getSecuritySettings(userId: string): Promise<any> {
+    try {
+      const user = await this.findOne(userId);
+      
+      // Lấy cài đặt bảo mật từ database
+      const settings = await this.userSettingsRepository.find({
+        where: {
+          userId,
+          settingType: SettingType.SECURITY,
+          isActive: true
+        }
+      });
+
+      // Nếu chưa có cài đặt, trả về mặc định
+      if (settings.length === 0) {
+        return this.getDefaultSecuritySettings();
+      }
+
+      // Chuyển đổi từ database format sang response format
+      const result: any = {};
+      settings.forEach(setting => {
+        result[setting.settingKey] = setting.settingValue;
+      });
+
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Cập nhật cài đặt bảo mật của user
+   */
+  async updateSecuritySettings(userId: string, settings: SecuritySettingsDto): Promise<any> {
+    try {
+      const user = await this.findOne(userId);
+      
+      // Lưu từng loại cài đặt vào database
+      const settingsToSave = [
+        { key: 'twoFactorEnabled', value: settings.twoFactorEnabled },
+        { key: 'loginNotifications', value: settings.loginNotifications },
+        { key: 'sessionTimeout', value: settings.sessionTimeout },
+        { key: 'trustedDevices', value: settings.trustedDevices },
+        { key: 'additionalSettings', value: settings.additionalSettings }
+      ];
+
+      for (const setting of settingsToSave) {
+        if (setting.value !== undefined) {
+          await this.userSettingsRepository.upsert({
+            userId,
+            settingType: SettingType.SECURITY,
+            settingKey: setting.key,
+            settingValue: setting.value as any,
+            isActive: true
+          }, ['userId', 'settingType', 'settingKey']);
+        }
+      }
+
+      return {
+        message: 'Cập nhật cài đặt bảo mật thành công',
+        settings
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Lấy cài đặt thông báo mặc định
+   */
+  private getDefaultNotificationSettings(): any {
+    return {
+      emailNotifications: {
+        enabled: true,
+        activities: true,
+        achievements: true,
+        weeklyReport: true,
+        monthlyReport: false,
+        marketing: false
+      },
+      pushNotifications: {
+        enabled: true,
+        activities: true,
+        achievements: true,
+        reminders: false
+      },
+      frequency: {
+        daily: true,
+        weekly: true,
+        monthly: false
+      },
+      quietHours: {
+        enabled: false,
+        startTime: '22:00',
+        endTime: '08:00'
+      }
+    };
+  }
+
+  /**
+   * Lấy cài đặt bảo mật mặc định
+   */
+  private getDefaultSecuritySettings(): any {
+    return {
+      twoFactorEnabled: false,
+      loginNotifications: true,
+      sessionTimeout: 30,
+      trustedDevices: [],
+      additionalSettings: {}
+    };
   }
 }
