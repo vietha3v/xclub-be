@@ -1109,7 +1109,7 @@
 
 "@nestjs/bull@^1.0.3":
   version "11.0.3"
-  resolved "https://registry.npmjs.org/@nestjs/bull/-/bull-11.0.3.tgz#11e506508deb117fff8cfb132ac22e4c47d02521"
+  resolved "https://registry.yarnpkg.com/@nestjs/bull/-/bull-11.0.3.tgz#11e506508deb117fff8cfb132ac22e4c47d02521"
   integrity sha512-VyH823Klc7OgsU0FyuKItgRefgrQOQHN5uW9lHxNih6LRtw2Vpi9fENjPdOwjQqKexxZxjNDGKZoDCyK+UGclg==
   dependencies:
     "@nestjs/bull-shared" "^11.0.3"
@@ -5771,7 +5771,7 @@ pause@0.0.1:
 
 paypal-rest-sdk@^1.8.3:
   version "2.0.0-rc.2"
-  resolved "https://registry.npmjs.org/paypal-rest-sdk/-/paypal-rest-sdk-2.0.0-rc.2.tgz#9b837b75b2066e8e9763229c2ba24c77da539db3"
+  resolved "https://registry.yarnpkg.com/paypal-rest-sdk/-/paypal-rest-sdk-2.0.0-rc.2.tgz#9b837b75b2066e8e9763229c2ba24c77da539db3"
   integrity sha512-z26HzK5M697Q+IjF3jxAxEAvRioF7vGbQyNe1uhOjAuuBz2UiPrM8kFH8fmoAQmJOyxt2aoRuwdKoSgZ226Qsg==
   dependencies:
     braintreehttp "0.4.0"
@@ -5934,7 +5934,7 @@ process-nextick-args@~2.0.0:
 
 prometheus-client@^15.1.0:
   version "0.1.1"
-  resolved "https://registry.npmjs.org/prometheus-client/-/prometheus-client-0.1.1.tgz#9dedd03abec640428760f6249ab3e4f278a327e6"
+  resolved "https://registry.yarnpkg.com/prometheus-client/-/prometheus-client-0.1.1.tgz#9dedd03abec640428760f6249ab3e4f278a327e6"
   integrity sha512-bHeKgkjCjINoDCwJbLgMjKYzaQMhHDFJh5MYTInrj3siECG6quq6cVnBDFKFeVpNE3SD6hPsOkyfNlVL8gvXoA==
   dependencies:
     debug "~2.1.2"

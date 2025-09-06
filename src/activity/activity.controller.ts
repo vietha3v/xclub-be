@@ -1,6 +1,7 @@
 import { 
   Controller, 
   Get, 
+  Post,
   Body, 
   Patch, 
   Param, 
@@ -50,6 +51,7 @@ export class ActivityController {
 
   @Get('stats')
   @ApiOperation({ summary: 'Lấy thống kê hoạt động của user' })
+  @ApiQuery({ name: 'source', required: false, enum: ['local', 'strava', 'synced'], description: 'Nguồn thống kê: local (từ DB), strava (từ Strava API), synced (từ DB đã đồng bộ)' })
   @ApiResponse({ 
     status: 200, 
     description: 'Thống kê hoạt động',
@@ -57,17 +59,70 @@ export class ActivityController {
       type: 'object',
       properties: {
         totalActivities: { type: 'number', description: 'Tổng số hoạt động' },
-        totalDistance: { type: 'number', description: 'Tổng khoảng cách (mét)' },
+        totalDistance: { type: 'number', description: 'Tổng khoảng cách (km)' },
         totalDuration: { type: 'number', description: 'Tổng thời gian (giây)' },
         totalCalories: { type: 'number', description: 'Tổng calories' },
         averageSpeed: { type: 'number', description: 'Tốc độ trung bình (km/h)' },
-        averagePace: { type: 'number', description: 'Pace trung bình (s/km)' }
+        averagePace: { type: 'number', description: 'Pace trung bình (s/km)' },
+        source: { type: 'string', description: 'Nguồn dữ liệu: local hoặc strava' }
       }
     }
   })
   @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
-  async getUserStats(@Req() req) {
+  async getUserStats(@Req() req, @Query('source') source: string = 'local') {
+    if (source === 'strava') {
+      // Lấy stats đã được sync từ Strava và lưu trong database
+      return this.activityService.getSyncedStats(req.user.userId);
+    } else if (source === 'synced') {
+      return this.activityService.getSyncedStats(req.user.userId);
+    }
     return this.activityService.getUserStats(req.user.userId);
+  }
+
+  @Post('stats/sync')
+  @ApiOperation({ summary: 'Đồng bộ thống kê từ Strava' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Đồng bộ thống kê thành công',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: { type: 'object' }
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
+  @ApiResponse({ status: 400, description: 'Chưa kết nối với Strava hoặc token hết hạn' })
+  async syncStatsFromStrava(@Req() req) {
+    return this.activityService.syncStatsFromStrava(req.user.userId);
+  }
+
+  @Post('sync-all')
+  @ApiOperation({ summary: 'Đồng bộ toàn bộ (activities + statistics) từ Strava' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Đồng bộ thành công',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            activities: { type: 'object' },
+            stats: { type: 'object' }
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
+  @ApiResponse({ status: 400, description: 'Chưa kết nối với Strava hoặc token hết hạn' })
+  async syncAllFromStrava(@Req() req) {
+    return this.activityService.syncAllFromStrava(req.user.userId);
   }
 
   @Get('recent')
@@ -99,7 +154,7 @@ export class ActivityController {
     @Param('type') type: ActivityType, 
     @Query('limit') limit: number = 10
   ) {
-    return this.activityService.getActivitiesByType(req.user.userId, type, limit);
+    return this.activityService.getActivitiesByTypeFromDB(req.user.userId, type, limit);
   }
 
   @Get(':id')

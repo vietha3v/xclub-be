@@ -42,22 +42,39 @@ export class SyncActivityService {
         throw new BadRequestException('Token đã hết hạn, vui lòng kết nối lại với Strava');
       }
 
-      // 3. Đồng bộ dữ liệu từ Strava
-      const newActivities = await this.syncFromStrava(userIntegration, syncDto.daysBack);
+      // 3. Đồng bộ song song cả activities và stats từ Strava
+      const [newActivities, statsResult] = await Promise.allSettled([
+        this.syncFromStrava(userIntegration, syncDto.daysBack),
+        this.activityService.syncStatsFromStrava(syncDto.userId)
+      ]);
 
-      // 4. Cập nhật trạng thái đồng bộ
+      // Xử lý kết quả activities
+      const activitiesCount = newActivities.status === 'fulfilled' ? newActivities.value : 0;
+      if (newActivities.status === 'rejected') {
+        this.logger.error(`Lỗi đồng bộ activities: ${newActivities.reason.message}`);
+        throw newActivities.reason;
+      }
+
+      // Xử lý kết quả stats
+      if (statsResult.status === 'fulfilled') {
+        this.logger.log(`Đồng bộ stats thành công cho user: ${syncDto.userId}`);
+      } else {
+        this.logger.warn(`Lỗi đồng bộ stats (không ảnh hưởng đến activities): ${statsResult.reason.message}`);
+      }
+
+      // 5. Cập nhật trạng thái đồng bộ
       await this.updateSyncStatus(userIntegration.id, UserIntegrationSyncStatus.ACTIVE, new Date());
 
       const duration = Date.now() - startTime;
-      const message = newActivities > 0 
-        ? `Đồng bộ thành công ${newActivities} hoạt động mới`
-        : 'Không có hoạt động mới để đồng bộ';
+      const message = activitiesCount > 0 
+        ? `Đồng bộ thành công ${activitiesCount} hoạt động mới và cập nhật thống kê`
+        : 'Không có hoạt động mới để đồng bộ, đã cập nhật thống kê';
 
       this.logger.log(`Đồng bộ hoàn thành: ${message} (${duration}ms)`);
 
       return {
         success: true,
-        newActivities,
+        newActivities: activitiesCount,
         syncTime: new Date().toISOString(),
         message,
         duration,
