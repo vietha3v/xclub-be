@@ -84,3 +84,4 @@ export class UserSettings {
   @JoinColumn({ name: 'userId' })
   user: User;
 }
+

@@ -1,7 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
-import { Club, ClubStatus } from './entities/club.entity';
+import { Club, ClubStatus, ClubType } from './entities/club.entity';
+import { ClubMember, MemberRole, MemberStatus } from './entities/club-member.entity';
+import { Event } from '../event/entities/event.entity';
+import { Challenge } from '../challenge/entities/challenge.entity';
 import { CreateClubDto } from './dto/create-club.dto';
 import { UpdateClubDto } from './dto/update-club.dto';
 import { QueryClubDto } from './dto/query-club.dto';
@@ -14,6 +17,8 @@ export class ClubService {
   constructor(
     @InjectRepository(Club)
     private clubRepository: Repository<Club>,
+    @InjectRepository(ClubMember)
+    private clubMemberRepository: Repository<ClubMember>,
     private clubMemberService: ClubMemberService,
   ) {}
 
@@ -27,6 +32,7 @@ export class ClubService {
     const club = this.clubRepository.create({
       ...createClubDto,
       clubCode,
+      type: createClubDto.type as ClubType || ClubType.RUNNING,
       status: ClubStatus.PENDING,
       foundedAt: createClubDto.foundedAt ? new Date(createClubDto.foundedAt) : undefined,
     });
@@ -42,7 +48,7 @@ export class ClubService {
   /**
    * Lấy danh sách câu lạc bộ với phân trang và filter
    */
-  async findAll(queryDto: QueryClubDto): Promise<PaginatedResult<Club>> {
+  async findAll(queryDto: QueryClubDto, userId?: string): Promise<PaginatedResult<any>> {
     const queryBuilder = this.buildQueryBuilder(queryDto);
     const { page, limit, skip } = getPaginationParams(queryDto.page, queryDto.limit);
     
@@ -51,22 +57,117 @@ export class ClubService {
       .take(limit)
       .getManyAndCount();
 
-    return createPaginatedResult(clubs, total, page, limit);
+    // Thêm trường role cho mỗi club
+    const clubsWithMembership = clubs.map(club => {
+      const userMembers = userId ? club.members?.filter(member => 
+        member.userId === userId && member.status === MemberStatus.ACTIVE
+      ) || [] : [];
+      
+      const userRoles = userMembers.map(member => member.role);
+      
+      return {
+        ...club,
+        userRole: userRoles.length > 0 ? userRoles : null,
+        isMember: userRoles.length > 0
+      };
+    });
+
+    return createPaginatedResult(clubsWithMembership, total, page, limit);
   }
 
   /**
-   * Lấy câu lạc bộ theo ID
+   * Lấy câu lạc bộ theo ID với đầy đủ thông tin
    */
-  async findOne(id: string): Promise<Club> {
+  async findOne(id: string, userId?: string): Promise<any> {
+    // Lấy thông tin CLB cơ bản
     const club = await this.clubRepository.findOne({
-      where: { id, isDeleted: false }
+      where: { id, isDeleted: false },
+      relations: ['members', 'members.user']
     });
 
     if (!club) {
       throw new NotFoundException('Câu lạc bộ không tồn tại');
     }
 
-    return club;
+    // Lấy events và challenges bằng query riêng
+    const [events, challenges] = await Promise.all([
+      this.clubRepository.manager
+        .createQueryBuilder(Event, 'event')
+        .where('event.clubId = :clubId', { clubId: id })
+        .andWhere('event.status = :status', { status: 'active' })
+        .andWhere('event.startDate > :now', { now: new Date() })
+        .getMany(),
+      
+      this.clubRepository.manager
+        .createQueryBuilder(Challenge, 'challenge')
+        .where('challenge.clubId = :clubId', { clubId: id })
+        .andWhere('challenge.status = :status', { status: 'active' })
+        .getMany()
+    ]);
+
+    // Lấy thông tin chi tiết
+    const activeMembers = club.members?.filter(member => member.status === MemberStatus.ACTIVE) || [];
+    
+    // Xác định vai trò của người dùng hiện tại
+    const currentUserMembers = userId ? activeMembers.filter(member => member.userId === userId) : [];
+    const userRoles = currentUserMembers.map(member => member.role);
+    const userRole = userRoles.length > 0 ? userRoles : null;
+    const isAdmin = userRoles.includes(MemberRole.ADMIN);
+
+    return {
+      ...club,
+      // Thông tin người dùng hiện tại
+      userRole,
+      isAdmin,
+      isMember: currentUserMembers.length > 0,
+      
+      // Thống kê
+      memberCount: activeMembers.length,
+      adminCount: activeMembers.filter(m => m.role === MemberRole.ADMIN).length,
+      moderatorCount: activeMembers.filter(m => m.role === MemberRole.MODERATOR).length,
+      eventCount: events.length,
+      challengeCount: challenges.length,
+      
+      // Danh sách chi tiết
+      members: activeMembers.map(member => ({
+        id: member.id,
+        role: member.role,
+        status: member.status,
+        joinedAt: member.joinedAt,
+        user: {
+          id: member.user?.id,
+          firstName: member.user?.firstName,
+          lastName: member.user?.lastName,
+          email: member.user?.email,
+          avatar: member.user?.avatar,
+          phoneNumber: member.user?.phoneNumber
+        }
+      })),
+      
+      events: events.map(event => ({
+        id: event.id,
+        name: event.name,
+        description: event.description,
+        startDate: event.startDate,
+        endDate: event.endDate,
+        location: event.location,
+        status: event.status,
+        type: event.type,
+        eventCode: event.eventCode
+      })),
+      
+      challenges: challenges.map(challenge => ({
+        id: challenge.id,
+        name: challenge.name,
+        description: challenge.description,
+        startDate: challenge.startDate,
+        endDate: challenge.endDate,
+        status: challenge.status,
+        type: challenge.type,
+        difficulty: challenge.difficulty,
+        maxParticipants: challenge.maxParticipants
+      }))
+    };
   }
 
   /**
@@ -87,8 +188,14 @@ export class ClubService {
   /**
    * Cập nhật câu lạc bộ
    */
-  async update(id: string, updateClubDto: UpdateClubDto): Promise<Club> {
+  async update(id: string, updateClubDto: UpdateClubDto, userId: string): Promise<Club> {
     const club = await this.findOne(id);
+
+    // Kiểm tra quyền admin CLB
+    const isAdmin = await this.checkClubAdmin(id, userId);
+    if (!isAdmin) {
+      throw new ForbiddenException('Chỉ admin CLB mới có quyền cập nhật');
+    }
 
     // Cập nhật thông tin
     Object.assign(club, updateClubDto);
@@ -106,6 +213,12 @@ export class ClubService {
    */
   async remove(id: string, deletedBy: string): Promise<void> {
     const club = await this.findOne(id);
+
+    // Kiểm tra quyền admin CLB
+    const isAdmin = await this.checkClubAdmin(id, deletedBy);
+    if (!isAdmin) {
+      throw new ForbiddenException('Chỉ admin CLB mới có quyền xóa');
+    }
     
     club.isDeleted = true;
     club.deletedAt = new Date();
@@ -143,6 +256,21 @@ export class ClubService {
       order: { createdAt: 'DESC' },
       take: limit,
     });
+  }
+
+  /**
+   * Kiểm tra quyền admin CLB
+   */
+  async checkClubAdmin(clubId: string, userId: string): Promise<boolean> {
+    const member = await this.clubMemberRepository.findOne({
+      where: {
+        clubId,
+        userId,
+        role: MemberRole.ADMIN,
+        status: MemberStatus.ACTIVE
+      }
+    });
+    return !!member;
   }
 
   /**
@@ -223,6 +351,7 @@ export class ClubService {
   private buildQueryBuilder(queryDto: QueryClubDto): SelectQueryBuilder<Club> {
     const queryBuilder = this.clubRepository
       .createQueryBuilder('club')
+      .leftJoinAndSelect('club.members', 'member')
       .where('club.isDeleted = false');
 
     // Filter theo loại
@@ -273,5 +402,39 @@ export class ClubService {
     queryBuilder.orderBy(`club.${queryDto.sortBy}`, sortOrder);
 
     return queryBuilder;
+  }
+
+  /**
+   * Lấy danh sách CLB của người dùng
+   */
+  async getUserClubs(userId: string): Promise<any[]> {
+    const queryBuilder = this.clubRepository
+      .createQueryBuilder('club')
+      .leftJoinAndSelect('club.members', 'member')
+      .leftJoin('member.user', 'user')
+      .where('user.id = :userId', { userId })
+      .andWhere('member.status = :status', { status: MemberStatus.ACTIVE })
+      .andWhere('club.isDeleted = false')
+      .orderBy('member.joinedAt', 'DESC');
+
+    const clubs = await queryBuilder.getMany();
+
+    return clubs.map(club => {
+      // Tìm tất cả member info cho user hiện tại (có thể có nhiều vai trò)
+      const userMembers = club.members?.filter(member => member.userId === userId) || [];
+      const userRoles = userMembers.map(member => member.role);
+      
+      return {
+        id: userMembers[0]?.id, // Lấy ID của member đầu tiên
+        club: {
+          ...club,
+          userRole: userRoles.length > 0 ? userRoles : null,
+          isMember: userRoles.length > 0
+        },
+        role: userRoles, // Trả về array roles
+        joinedAt: userMembers[0]?.joinedAt,
+        status: userMembers[0]?.status
+      };
+    });
   }
 }

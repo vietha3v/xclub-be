@@ -17,7 +17,6 @@ export class CreateClubDto {
   })
   @IsOptional()
   @IsString()
-  @Length(0, 50, { message: 'Tên viết tắt không được vượt quá 50 ký tự' })
   shortName?: string;
 
   @ApiPropertyOptional({ 
@@ -26,7 +25,6 @@ export class CreateClubDto {
   })
   @IsOptional()
   @IsString()
-  @Length(0, 500, { message: 'Mô tả không được vượt quá 500 ký tự' })
   description?: string;
 
   @ApiPropertyOptional({ 
@@ -35,8 +33,8 @@ export class CreateClubDto {
     default: ClubType.RUNNING
   })
   @IsOptional()
-  @IsEnum(ClubType)
-  type?: ClubType;
+  @IsString()
+  type?: string;
 
   @ApiPropertyOptional({ 
     description: 'Logo câu lạc bộ',
@@ -44,7 +42,6 @@ export class CreateClubDto {
   })
   @IsOptional()
   @IsString()
-  @Matches(/^https?:\/\/.+/, { message: 'Logo URL phải là địa chỉ hợp lệ' })
   logoUrl?: string;
 
   @ApiPropertyOptional({ 
@@ -53,7 +50,6 @@ export class CreateClubDto {
   })
   @IsOptional()
   @IsString()
-  @Matches(/^https?:\/\/.+/, { message: 'Ảnh bìa URL phải là địa chỉ hợp lệ' })
   coverImageUrl?: string;
 
   @ApiPropertyOptional({ 
@@ -62,7 +58,6 @@ export class CreateClubDto {
   })
   @IsOptional()
   @IsString()
-  @Matches(/^https?:\/\/.+/, { message: 'Website phải là địa chỉ hợp lệ' })
   website?: string;
 
   @ApiPropertyOptional({ 
@@ -70,7 +65,7 @@ export class CreateClubDto {
     example: 'contact@example.com'
   })
   @IsOptional()
-  @IsEmail({}, { message: 'Email không hợp lệ' })
+  @IsString()
   email?: string;
 
   @ApiPropertyOptional({ 
@@ -79,7 +74,6 @@ export class CreateClubDto {
   })
   @IsOptional()
   @IsString()
-  @Matches(/^(\+84|84|0)[1-9][0-9]{8,9}$/, { message: 'Số điện thoại không hợp lệ' })
   phone?: string;
 
   @ApiPropertyOptional({ 
@@ -88,7 +82,6 @@ export class CreateClubDto {
   })
   @IsOptional()
   @IsString()
-  @Length(0, 200, { message: 'Địa chỉ không được vượt quá 200 ký tự' })
   address?: string;
 
   @ApiPropertyOptional({ 
@@ -97,7 +90,6 @@ export class CreateClubDto {
   })
   @IsOptional()
   @IsString()
-  @Length(0, 100, { message: 'Tên thành phố không được vượt quá 100 ký tự' })
   city?: string;
 
   @ApiPropertyOptional({ 
@@ -106,7 +98,6 @@ export class CreateClubDto {
   })
   @IsOptional()
   @IsString()
-  @Length(0, 100, { message: 'Tên tỉnh/thành phố không được vượt quá 100 ký tự' })
   state?: string;
 
   @ApiPropertyOptional({ 
@@ -115,7 +106,6 @@ export class CreateClubDto {
   })
   @IsOptional()
   @IsString()
-  @Length(0, 100, { message: 'Tên quốc gia không được vượt quá 100 ký tự' })
   country?: string;
 
   @ApiPropertyOptional({ 
@@ -124,7 +114,6 @@ export class CreateClubDto {
   })
   @IsOptional()
   @IsString()
-  @Matches(/^[0-9]{5,6}$/, { message: 'Mã bưu điện phải có 5-6 chữ số' })
   postalCode?: string;
 
   @ApiPropertyOptional({ 
@@ -132,9 +121,7 @@ export class CreateClubDto {
     example: 21.0285
   })
   @IsOptional()
-  @IsNumber({}, { message: 'Vĩ độ phải là số' })
-  @Min(-90, { message: 'Vĩ độ phải từ -90 đến 90' })
-  @Max(90, { message: 'Vĩ độ phải từ -90 đến 90' })
+  @IsNumber()
   latitude?: number;
 
   @ApiPropertyOptional({ 
@@ -142,9 +129,7 @@ export class CreateClubDto {
     example: 105.8542
   })
   @IsOptional()
-  @IsNumber({}, { message: 'Kinh độ phải là số' })
-  @Min(-180, { message: 'Kinh độ phải từ -180 đến 180' })
-  @Max(180, { message: 'Kinh độ phải từ -180 đến 180' })
+  @IsNumber()
   longitude?: number;
 
   @ApiPropertyOptional({ 
@@ -152,7 +137,7 @@ export class CreateClubDto {
     example: '2020-01-01T00:00:00Z'
   })
   @IsOptional()
-  @IsDateString()
+  @IsString()
   foundedAt?: string;
 
   @ApiPropertyOptional({ 
@@ -160,9 +145,7 @@ export class CreateClubDto {
     example: 100
   })
   @IsOptional()
-  @IsNumber({}, { message: 'Số thành viên tối đa phải là số' })
-  @Min(1, { message: 'Số thành viên tối đa phải lớn hơn 0' })
-  @Max(10000, { message: 'Số thành viên tối đa không được vượt quá 10,000' })
+  @IsNumber()
   maxMembers?: number;
 
   @ApiPropertyOptional({ 
@@ -170,9 +153,7 @@ export class CreateClubDto {
     example: 50000
   })
   @IsOptional()
-  @IsNumber({}, { message: 'Phí hàng tháng phải là số' })
-  @Min(0, { message: 'Phí hàng tháng không được âm' })
-  @Max(10000000, { message: 'Phí hàng tháng không được vượt quá 10,000,000 VND' })
+  @IsNumber()
   monthlyFee?: number;
 
   @ApiPropertyOptional({ 
@@ -180,9 +161,7 @@ export class CreateClubDto {
     example: 500000
   })
   @IsOptional()
-  @IsNumber({}, { message: 'Phí hàng năm phải là số' })
-  @Min(0, { message: 'Phí hàng năm không được âm' })
-  @Max(100000000, { message: 'Phí hàng năm không được vượt quá 100,000,000 VND' })
+  @IsNumber()
   yearlyFee?: number;
 
   @ApiPropertyOptional({ 
@@ -191,7 +170,6 @@ export class CreateClubDto {
   })
   @IsOptional()
   @IsString()
-  @Length(0, 2000, { message: 'Quy tắc không được vượt quá 2000 ký tự' })
   rules?: string;
 
   @ApiPropertyOptional({ 
@@ -200,7 +178,6 @@ export class CreateClubDto {
   })
   @IsOptional()
   @IsString()
-  @Length(0, 1000, { message: 'Lịch hoạt động không được vượt quá 1000 ký tự' })
   schedule?: string;
 
   @ApiPropertyOptional({ 

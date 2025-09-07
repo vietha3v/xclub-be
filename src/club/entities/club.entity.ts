@@ -1,6 +1,8 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index, OneToMany } from 'typeorm';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ClubMember } from './club-member.entity';
+import { Event } from '../../event/entities/event.entity';
+import { Challenge } from '../../challenge/entities/challenge.entity';
 
 export enum ClubStatus {
   ACTIVE = 'active',
@@ -176,6 +178,12 @@ export class Club {
   // Relationships
   @OneToMany(() => ClubMember, member => member.club)
   members: ClubMember[];
+
+  @OneToMany(() => Event, event => event.clubId)
+  events: Event[];
+
+  @OneToMany(() => Challenge, challenge => challenge.clubId)
+  challenges: Challenge[];
 
   // Virtual properties for statistics
   get memberCount(): number {

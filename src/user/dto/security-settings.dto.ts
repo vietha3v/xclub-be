@@ -89,3 +89,4 @@ export class SecuritySettingsDto {
   @IsOptional()
   additionalSettings?: any;
 }
+

@@ -171,3 +171,4 @@ export class NotificationSettingsDto {
   @Type(() => QuietHoursSettings)
   quietHours: QuietHoursSettings;
 }
+

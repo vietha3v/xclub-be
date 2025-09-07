@@ -14,6 +14,8 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { ClubService } from './club.service';
 import { CreateClubDto } from './dto/create-club.dto';
 import { UpdateClubDto } from './dto/update-club.dto';
@@ -42,6 +44,7 @@ export class ClubController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Lấy danh sách câu lạc bộ với phân trang và filter' })
   @ApiResponse({ 
     status: 200, 
@@ -56,8 +59,33 @@ export class ClubController {
       }
     }
   })
-  async findAll(@Query() queryDto: QueryClubDto) {
-    return this.clubService.findAll(queryDto);
+  async findAll(@Query() queryDto: QueryClubDto, @Req() req: any) {
+    return this.clubService.findAll(queryDto, req.user?.userId);
+  }
+
+  @Get('my-clubs')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Lấy danh sách CLB của người dùng hiện tại' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Danh sách CLB của người dùng',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'ID thành viên' },
+          club: { $ref: '#/components/schemas/Club' },
+          role: { type: 'string', enum: ['admin', 'moderator', 'member'], description: 'Vai trò trong CLB' },
+          joinedAt: { type: 'string', format: 'date-time', description: 'Ngày tham gia' },
+          status: { type: 'string', enum: ['active', 'pending', 'suspended'], description: 'Trạng thái thành viên' }
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
+  async getMyClubs(@Req() req: any) {
+    return this.clubService.getUserClubs(req.user.userId);
   }
 
   @Get('stats')
@@ -150,7 +178,7 @@ export class ClubController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Cập nhật câu lạc bộ' })
+  @ApiOperation({ summary: 'Cập nhật câu lạc bộ (chỉ admin CLB)' })
   @ApiParam({ name: 'id', description: 'ID của câu lạc bộ' })
   @ApiResponse({ 
     status: 200, 
@@ -159,12 +187,14 @@ export class ClubController {
   })
   @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
   @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
+  @ApiResponse({ status: 403, description: 'Chỉ admin mới được cập nhật' })
   @ApiResponse({ status: 404, description: 'Câu lạc bộ không tồn tại' })
   async update(
     @Param('id') id: string, 
-    @Body() updateClubDto: UpdateClubDto
+    @Body() updateClubDto: UpdateClubDto,
+    @Req() req: any
   ): Promise<Club> {
-    return this.clubService.update(id, updateClubDto);
+    return this.clubService.update(id, updateClubDto, req.user?.userId);
   }
 
   @Patch(':id/status')
@@ -188,10 +218,11 @@ export class ClubController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Xóa câu lạc bộ (xóa mềm)' })
+  @ApiOperation({ summary: 'Xóa câu lạc bộ (chỉ admin CLB)' })
   @ApiParam({ name: 'id', description: 'ID của câu lạc bộ' })
   @ApiResponse({ status: 200, description: 'Xóa thành công' })
   @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
+  @ApiResponse({ status: 403, description: 'Chỉ admin mới được xóa' })
   @ApiResponse({ status: 404, description: 'Câu lạc bộ không tồn tại' })
   async remove(@Req() req, @Param('id') id: string): Promise<void> {
     return this.clubService.remove(id, req.user.userId);
