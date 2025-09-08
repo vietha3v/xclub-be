@@ -20,6 +20,8 @@ import { ClubService } from './club.service';
 import { CreateClubDto } from './dto/create-club.dto';
 import { UpdateClubDto } from './dto/update-club.dto';
 import { QueryClubDto } from './dto/query-club.dto';
+import { JoinClubDto, LeaveClubDto, JoinClubResponseDto, LeaveClubResponseDto } from './dto/join-leave-club.dto';
+import { ClubResponseDto } from './dto/club-response.dto';
 import { Club, ClubStatus } from './entities/club.entity';
 
 @ApiTags('🏢 Quản lý câu lạc bộ')
@@ -52,7 +54,7 @@ export class ClubController {
     schema: {
       type: 'object',
       properties: {
-        clubs: { type: 'array', items: { $ref: '#/components/schemas/Club' } },
+        clubs: { type: 'array', items: { $ref: '#/components/schemas/ClubResponseDto' } },
         total: { type: 'number', description: 'Tổng số câu lạc bộ' },
         page: { type: 'number', description: 'Trang hiện tại' },
         limit: { type: 'number', description: 'Số lượng mỗi trang' }
@@ -106,6 +108,7 @@ export class ClubController {
   async getStats() {
     return this.clubService.getStats();
   }
+
 
   @Get('search')
   @ApiOperation({ summary: 'Tìm kiếm câu lạc bộ' })
@@ -164,16 +167,17 @@ export class ClubController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Lấy câu lạc bộ theo ID' })
   @ApiParam({ name: 'id', description: 'ID của câu lạc bộ' })
   @ApiResponse({ 
     status: 200, 
     description: 'Thông tin câu lạc bộ',
-    type: Club
+    type: ClubResponseDto
   })
   @ApiResponse({ status: 404, description: 'Câu lạc bộ không tồn tại' })
-  async findOne(@Param('id') id: string): Promise<Club> {
-    return this.clubService.findOne(id);
+  async findOne(@Param('id') id: string, @Req() req: any): Promise<ClubResponseDto> {
+    return this.clubService.findOne(id, req.user?.userId);
   }
 
   @Patch(':id')
@@ -226,5 +230,47 @@ export class ClubController {
   @ApiResponse({ status: 404, description: 'Câu lạc bộ không tồn tại' })
   async remove(@Req() req, @Param('id') id: string): Promise<void> {
     return this.clubService.remove(id, req.user.userId);
+  }
+
+  @Post(':id/join')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Tham gia câu lạc bộ' })
+  @ApiParam({ name: 'id', description: 'ID của câu lạc bộ' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Tham gia câu lạc bộ thành công',
+    type: JoinClubResponseDto
+  })
+  @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ hoặc không thể tham gia' })
+  @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
+  @ApiResponse({ status: 404, description: 'Câu lạc bộ không tồn tại' })
+  async joinClub(
+    @Param('id') id: string, 
+    @Body() joinClubDto: JoinClubDto,
+    @Req() req: any
+  ): Promise<JoinClubResponseDto> {
+    return this.clubService.joinClub(id, req.user.userId, joinClubDto);
+  }
+
+  @Delete(':id/leave')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Rời khỏi câu lạc bộ' })
+  @ApiParam({ name: 'id', description: 'ID của câu lạc bộ' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Rời câu lạc bộ thành công',
+    type: LeaveClubResponseDto
+  })
+  @ApiResponse({ status: 400, description: 'Không thể rời câu lạc bộ' })
+  @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
+  @ApiResponse({ status: 404, description: 'Câu lạc bộ không tồn tại' })
+  async leaveClub(
+    @Param('id') id: string, 
+    @Body() leaveClubDto: LeaveClubDto,
+    @Req() req: any
+  ): Promise<LeaveClubResponseDto> {
+    return this.clubService.leaveClub(id, req.user.userId, leaveClubDto);
   }
 }

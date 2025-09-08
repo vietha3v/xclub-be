@@ -167,42 +167,6 @@ export class EventController {
     return this.eventService.remove(id, req.user.userId);
   }
 
-
-
-  @Get('club/:clubId')
-  @ApiOperation({ 
-    summary: 'Lấy sự kiện theo câu lạc bộ',
-    description: 'Lấy danh sách sự kiện của một câu lạc bộ cụ thể'
-  })
-  @ApiParam({ name: 'clubId', description: 'ID của câu lạc bộ' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Lấy danh sách sự kiện thành công',
-    schema: {
-      type: 'object',
-      properties: {
-        events: {
-          type: 'array',
-          items: { $ref: '#/components/schemas/Event' }
-        },
-        total: { type: 'number' },
-        page: { type: 'number' },
-        limit: { type: 'number' }
-      }
-    }
-  })
-  @ApiResponse({ 
-    status: 401, 
-    description: 'Chưa xác thực'
-  })
-  async findByClub(
-    @Param('clubId') clubId: string,
-    @Query() queryEventDto: QueryEventDto
-  ) {
-    const query = { ...queryEventDto, clubId };
-    return this.eventService.findAll(query);
-  }
-
   @Get('creator/:userId')
   @ApiOperation({ 
     summary: 'Lấy sự kiện theo người tạo',

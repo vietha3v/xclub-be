@@ -179,7 +179,7 @@ export class Club {
   @OneToMany(() => ClubMember, member => member.club)
   members: ClubMember[];
 
-  @OneToMany(() => Event, event => event.clubId)
+  @OneToMany(() => Event, event => event.club)
   events: Event[];
 
   @OneToMany(() => Challenge, challenge => challenge.clubId)

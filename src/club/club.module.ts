@@ -9,9 +9,14 @@ import { Club } from './entities/club.entity';
 import { ClubMember } from './entities/club-member.entity';
 import { Event } from '../event/entities/event.entity';
 import { Challenge } from '../challenge/entities/challenge.entity';
+import { Activity } from '../activity/entities/activity.entity';
+import { ActivityModule } from '../activity/activity.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Club, ClubMember, Event, Challenge])],
+  imports: [
+    TypeOrmModule.forFeature([Club, ClubMember, Event, Challenge, Activity]),
+    ActivityModule
+  ],
   controllers: [ClubController, ClubMemberController],
   providers: [ClubService, ClubMemberService, ClubPermissionService],
   exports: [ClubService, ClubMemberService, ClubPermissionService],

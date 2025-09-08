@@ -8,6 +8,8 @@ import { Challenge } from '../challenge/entities/challenge.entity';
 import { CreateClubDto } from './dto/create-club.dto';
 import { UpdateClubDto } from './dto/update-club.dto';
 import { QueryClubDto } from './dto/query-club.dto';
+import { JoinClubDto, LeaveClubDto, JoinClubResponseDto, LeaveClubResponseDto } from './dto/join-leave-club.dto';
+import { ClubResponseDto } from './dto/club-response.dto';
 import { ClubMemberService } from './services/club-member.service';
 import { PaginatedResult } from '../common/interfaces/paginated-result.interface';
 import { createPaginatedResult, getPaginationParams } from '../common/utils/pagination.util';
@@ -21,6 +23,19 @@ export class ClubService {
     private clubMemberRepository: Repository<ClubMember>,
     private clubMemberService: ClubMemberService,
   ) {}
+
+  /**
+   * Transform Club entity to ClubResponseDto (loại bỏ các trường không cần thiết)
+   */
+  private transformToResponseDto(club: Club, userRole?: MemberRole[] | null, additionalData?: any): ClubResponseDto {
+    const { isPublic, isDeleted, deletedAt, deletedBy, ...clubData } = club;
+    
+    return {
+      ...clubData,
+      userRole: userRole || null,
+      ...additionalData
+    } as ClubResponseDto;
+  }
 
   /**
    * Tạo câu lạc bộ mới
@@ -60,16 +75,12 @@ export class ClubService {
     // Thêm trường role cho mỗi club
     const clubsWithMembership = clubs.map(club => {
       const userMembers = userId ? club.members?.filter(member => 
-        member.userId === userId && member.status === MemberStatus.ACTIVE
+        String(member.userId) === String(userId) && member.status === MemberStatus.ACTIVE
       ) || [] : [];
       
       const userRoles = userMembers.map(member => member.role);
       
-      return {
-        ...club,
-        userRole: userRoles.length > 0 ? userRoles : null,
-        isMember: userRoles.length > 0
-      };
+      return this.transformToResponseDto(club, userRoles.length > 0 ? userRoles : null);
     });
 
     return createPaginatedResult(clubsWithMembership, total, page, limit);
@@ -109,18 +120,26 @@ export class ClubService {
     const activeMembers = club.members?.filter(member => member.status === MemberStatus.ACTIVE) || [];
     
     // Xác định vai trò của người dùng hiện tại
-    const currentUserMembers = userId ? activeMembers.filter(member => member.userId === userId) : [];
+    console.log('Debug findOne:', {
+      userId,
+      totalMembers: club.members?.length || 0,
+      activeMembers: activeMembers.length,
+      memberUserIds: activeMembers.map(m => m.userId)
+    });
+    
+    const currentUserMembers = userId ? activeMembers.filter(member => String(member.userId) === String(userId)) : [];
     const userRoles = currentUserMembers.map(member => member.role);
     const userRole = userRoles.length > 0 ? userRoles : null;
     const isAdmin = userRoles.includes(MemberRole.ADMIN);
-
-    return {
-      ...club,
-      // Thông tin người dùng hiện tại
+    
+    console.log('Debug userRole:', {
+      currentUserMembers: currentUserMembers.length,
+      userRoles,
       userRole,
-      isAdmin,
-      isMember: currentUserMembers.length > 0,
-      
+      isAdmin
+    });
+
+    return this.transformToResponseDto(club, userRole, {
       // Thống kê
       memberCount: activeMembers.length,
       adminCount: activeMembers.filter(m => m.role === MemberRole.ADMIN).length,
@@ -167,7 +186,7 @@ export class ClubService {
         difficulty: challenge.difficulty,
         maxParticipants: challenge.maxParticipants
       }))
-    };
+    });
   }
 
   /**
@@ -421,20 +440,142 @@ export class ClubService {
 
     return clubs.map(club => {
       // Tìm tất cả member info cho user hiện tại (có thể có nhiều vai trò)
-      const userMembers = club.members?.filter(member => member.userId === userId) || [];
+      const userMembers = club.members?.filter(member => String(member.userId) === String(userId)) || [];
       const userRoles = userMembers.map(member => member.role);
       
       return {
         id: userMembers[0]?.id, // Lấy ID của member đầu tiên
-        club: {
-          ...club,
-          userRole: userRoles.length > 0 ? userRoles : null,
-          isMember: userRoles.length > 0
-        },
+        club: this.transformToResponseDto(club, userRoles.length > 0 ? userRoles : null),
         role: userRoles, // Trả về array roles
         joinedAt: userMembers[0]?.joinedAt,
         status: userMembers[0]?.status
       };
     });
   }
+
+  /**
+   * Tham gia câu lạc bộ
+   */
+  async joinClub(clubId: string, userId: string, joinClubDto: JoinClubDto): Promise<JoinClubResponseDto> {
+    // Kiểm tra CLB có tồn tại không
+    const club = await this.clubRepository.findOne({
+      where: { id: clubId, isDeleted: false }
+    });
+    if (!club) {
+      throw new NotFoundException('Câu lạc bộ không tồn tại');
+    }
+
+    // Kiểm tra CLB có cho phép thành viên mới không
+    if (!club.allowNewMembers) {
+      throw new BadRequestException('Câu lạc bộ hiện tại không nhận thành viên mới');
+    }
+
+    // Kiểm tra CLB có đang hoạt động không
+    if (club.status !== ClubStatus.ACTIVE) {
+      throw new BadRequestException('Câu lạc bộ hiện tại không hoạt động');
+    }
+
+    // Kiểm tra user đã là thành viên chưa
+    const existingMember = await this.clubMemberRepository.findOne({
+      where: { clubId, userId }
+    });
+    if (existingMember) {
+      if (existingMember.status === MemberStatus.ACTIVE) {
+        throw new BadRequestException('Bạn đã là thành viên của câu lạc bộ này');
+      } else if (existingMember.status === MemberStatus.PENDING) {
+        throw new BadRequestException('Bạn đã gửi yêu cầu tham gia và đang chờ duyệt');
+      }
+    }
+
+    // Kiểm tra số lượng thành viên tối đa
+    if (club.maxMembers) {
+      const currentMemberCount = await this.clubMemberRepository.count({
+        where: { clubId, status: MemberStatus.ACTIVE }
+      });
+      if (currentMemberCount >= club.maxMembers) {
+        throw new BadRequestException('Câu lạc bộ đã đạt số lượng thành viên tối đa');
+      }
+    }
+
+    // Xác định trạng thái thành viên
+    const memberStatus = club.requireApproval ? MemberStatus.PENDING : MemberStatus.ACTIVE;
+
+    // Tạo hoặc cập nhật thành viên
+    let member: ClubMember;
+    if (existingMember) {
+      // Cập nhật thành viên cũ (có thể là inactive hoặc suspended)
+      existingMember.status = memberStatus;
+      existingMember.role = MemberRole.MEMBER;
+      existingMember.notes = joinClubDto.message || existingMember.notes;
+      existingMember.joinedAt = new Date();
+      member = await this.clubMemberRepository.save(existingMember);
+    } else {
+      // Tạo thành viên mới
+      const newMember = this.clubMemberRepository.create({
+        clubId,
+        userId,
+        role: MemberRole.MEMBER,
+        status: memberStatus,
+        notes: joinClubDto.message,
+      });
+      member = await this.clubMemberRepository.save(newMember);
+    }
+
+    return {
+      message: memberStatus === MemberStatus.ACTIVE 
+        ? 'Tham gia câu lạc bộ thành công!' 
+        : 'Yêu cầu tham gia đã được gửi, vui lòng chờ admin duyệt',
+      status: memberStatus,
+      role: member.role,
+      joinedAt: member.joinedAt,
+      adminNote: memberStatus === MemberStatus.PENDING 
+        ? 'Yêu cầu của bạn đang chờ admin duyệt' 
+        : undefined
+    };
+  }
+
+  /**
+   * Rời khỏi câu lạc bộ
+   */
+  async leaveClub(clubId: string, userId: string, leaveClubDto: LeaveClubDto): Promise<LeaveClubResponseDto> {
+    // Kiểm tra CLB có tồn tại không
+    const club = await this.clubRepository.findOne({
+      where: { id: clubId, isDeleted: false }
+    });
+    if (!club) {
+      throw new NotFoundException('Câu lạc bộ không tồn tại');
+    }
+
+    // Kiểm tra user có là thành viên không
+    const member = await this.clubMemberRepository.findOne({
+      where: { clubId, userId, status: MemberStatus.ACTIVE }
+    });
+    if (!member) {
+      throw new BadRequestException('Bạn không phải thành viên của câu lạc bộ này');
+    }
+
+    // Kiểm tra có phải admin cuối cùng không
+    if (member.role === MemberRole.ADMIN) {
+      const adminCount = await this.clubMemberRepository.count({
+        where: { clubId, role: MemberRole.ADMIN, status: MemberStatus.ACTIVE }
+      });
+      if (adminCount <= 1) {
+        throw new BadRequestException('Không thể rời CLB khi bạn là admin cuối cùng. Hãy chuyển giao quyền admin trước.');
+      }
+    }
+
+    // Cập nhật trạng thái thành viên
+    member.status = MemberStatus.INACTIVE;
+    member.leftAt = new Date();
+    member.leaveReason = leaveClubDto.reason;
+    
+    await this.clubMemberRepository.save(member);
+
+    return {
+      message: 'Rời câu lạc bộ thành công',
+      leftAt: member.leftAt,
+      reason: leaveClubDto.reason
+    };
+  }
+
 }

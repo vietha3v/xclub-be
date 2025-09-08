@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, SelectQueryBuilder } from 'typeorm';
+import { Repository, SelectQueryBuilder, MoreThanOrEqual, LessThanOrEqual, Between } from 'typeorm';
+import { startOfWeek, startOfMonth, endOfWeek, endOfMonth } from 'date-fns';
 import { Activity, ActivityType, ActivityStatus, ActivityVisibility } from './entities/activity.entity';
 import { ActivityStats } from './entities/activity-stats.entity';
 import { QueryActivityDto } from './dto/query-activity.dto';
@@ -150,6 +151,64 @@ export class ActivityService {
     activity.deletedBy = userId;
     
     await this.activityRepository.save(activity);
+  }
+
+  /**
+   * Lấy thống kê tuần/tháng của user từ database
+   */
+  async getUserWeekMonthStats(userId: string): Promise<any> {
+    try {
+      const now = new Date();
+      const weekStart = startOfWeek(now, { weekStartsOn: 1 }); 
+      const weekEnd = endOfWeek(now, { weekStartsOn: 1 }); 
+      const monthStart = startOfMonth(now);
+      const monthEnd = endOfMonth(now);
+
+      // Lấy activities tuần này (từ chủ nhật đến thứ 7)
+      const weekActivities = await this.activityRepository.find({
+        where: {
+          userId,
+          isDeleted: false,
+          startTime: Between(weekStart, weekEnd)
+        }
+      });
+
+      // Lấy activities tháng này (từ ngày 1 đến ngày cuối tháng)
+      const monthActivities = await this.activityRepository.find({
+        where: {
+          userId,
+          isDeleted: false,
+          startTime: Between(monthStart, monthEnd)
+        }
+      });
+
+      // Tính thống kê tuần
+      const weekStats = {
+        distance: weekActivities.reduce((sum, activity) => sum + (parseFloat(activity.distance?.toString() || '0') || 0), 0),
+        count: weekActivities.length,
+        duration: weekActivities.reduce((sum, activity) => sum + (parseInt(activity.duration?.toString() || '0') || 0), 0),
+        calories: weekActivities.reduce((sum, activity) => sum + (parseInt(activity.calories?.toString() || '0') || 0), 0)
+      };
+
+      // Tính thống kê tháng
+      const monthStats = {
+        distance: monthActivities.reduce((sum, activity) => sum + (parseFloat(activity.distance?.toString() || '0') || 0), 0),
+        count: monthActivities.length,
+        duration: monthActivities.reduce((sum, activity) => sum + (parseInt(activity.duration?.toString() || '0') || 0), 0),
+        calories: monthActivities.reduce((sum, activity) => sum + (parseInt(activity.calories?.toString() || '0') || 0), 0)
+      };
+
+      return {
+        week: weekStats,
+        month: monthStats
+      };
+    } catch (error) {
+      console.error('Error getting week/month stats:', error);
+      return {
+        week: { distance: 0, count: 0, duration: 0, calories: 0 },
+        month: { distance: 0, count: 0, duration: 0, calories: 0 }
+      };
+    }
   }
 
   /**

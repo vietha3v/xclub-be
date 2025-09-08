@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export enum EventStatus {
@@ -12,7 +12,18 @@ export enum EventType {
   TRAINING = 'training',
   COMPETITION = 'competition',
   SOCIAL = 'social',
-  CHARITY = 'charity'
+  CHARITY = 'charity',
+  WORKSHOP = 'workshop',
+  MEETUP = 'meetup',
+  KNOWLEDGE_SHARING = 'knowledge_sharing',
+  BIRTHDAY = 'birthday',
+  CELEBRATION = 'celebration',
+  TEAM_BUILDING = 'team_building',
+  HEALTH_CHECK = 'health_check',
+  NUTRITION_TALK = 'nutrition_talk',
+  EQUIPMENT_REVIEW = 'equipment_review',
+  ROUTE_EXPLORATION = 'route_exploration',
+  OTHER = 'other'
 }
 
 export enum EventVisibility {
@@ -68,6 +79,11 @@ export class Event {
   @Index()
   clubId?: string;
 
+  // Relation với Club
+  @ManyToOne('Club', { nullable: true })
+  @JoinColumn({ name: 'clubId' })
+  club?: any;
+
   @ApiProperty({ description: 'ID người tạo sự kiện' })
   @Column()
   @Index()
@@ -120,6 +136,23 @@ export class Event {
   @ApiPropertyOptional({ description: 'Tags sự kiện' })
   @Column({ type: 'simple-array', nullable: true })
   tags?: string[];
+
+  @ApiPropertyOptional({ description: 'Số lượng người tham gia tối đa' })
+  @Column({ type: 'int', nullable: true })
+  maxParticipants?: number;
+
+  @ApiPropertyOptional({ description: 'Phí đăng ký (VND)' })
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  registrationFee?: number;
+
+  @ApiPropertyOptional({ description: 'Hình thức tổ chức' })
+  @Column({ 
+    type: 'enum', 
+    enum: ['online', 'offline', 'hybrid'], 
+    default: 'offline',
+    nullable: true 
+  })
+  format?: 'online' | 'offline' | 'hybrid';
 
   @ApiProperty({ description: 'Trạng thái xóa mềm' })
   @Column({ default: false })

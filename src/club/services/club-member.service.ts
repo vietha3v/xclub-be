@@ -1,8 +1,11 @@
 import { Injectable, Logger, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { startOfWeek, startOfMonth } from 'date-fns';
 import { Club } from '../entities/club.entity';
 import { ClubMember, MemberRole, MemberStatus } from '../entities/club-member.entity';
+import { Activity, ActivityType } from '../../activity/entities/activity.entity';
+import { ActivityService } from '../../activity/activity.service';
 import { 
   AddMemberDto, 
   UpdateMemberRoleDto, 
@@ -21,6 +24,9 @@ export class ClubMemberService {
     private clubRepo: Repository<Club>,
     @InjectRepository(ClubMember)
     private clubMemberRepo: Repository<ClubMember>,
+    @InjectRepository(Activity)
+    private activityRepo: Repository<Activity>,
+    private activityService: ActivityService,
   ) {}
 
   /**
@@ -304,14 +310,20 @@ export class ClubMemberService {
     page: number = 1,
     limit: number = 20,
     role?: MemberRole,
-    status?: MemberStatus
+    status?: MemberStatus,
+    sortBy?: string
   ): Promise<{ members: MemberResponseDto[]; total: number }> {
+    this.logger.log(`Getting members for club ${clubId}, user ${currentUserId}`);
+    
     // Kiểm tra quyền xem danh sách thành viên
     const currentMember = await this.clubMemberRepo.findOne({
       where: { clubId, userId: currentUserId }
     });
     
+    this.logger.log(`Current member found: ${!!currentMember}`);
+    
     if (!currentMember) {
+      this.logger.warn(`User ${currentUserId} is not a member of club ${clubId}`);
       throw new ForbiddenException('Bạn không phải thành viên của câu lạc bộ này');
     }
 
@@ -339,8 +351,41 @@ export class ClubMemberService {
       .orderBy('member.joinedAt', 'ASC')
       .getMany();
 
-    // Map response
-    const memberResponses = members.map(member => this.mapToMemberResponseDto(member));
+    // Map response với thống kê chạy bộ
+    const memberResponses = await Promise.all(
+      members.map(async member => {
+        try {
+          const memberResponse = this.mapToMemberResponseDto(member);
+          
+          // Gọi API getUserWeekMonthStats để lấy thống kê tuần/tháng chính xác
+          const weekMonthStats = await this.activityService.getUserWeekMonthStats(member.userId);
+          
+          // Lấy thống kê theo sortBy (week hoặc month)
+          const currentStats = sortBy === 'week' ? weekMonthStats.week : weekMonthStats.month;
+          const currentDistance = currentStats?.distance || 0;
+          const currentActivityCount = currentStats?.count || 0;
+          
+          return {
+            ...memberResponse,
+            runningStats: {
+              distance: currentDistance,
+              activityCount: currentActivityCount
+            }
+          };
+        } catch (error) {
+          this.logger.error(`Error getting stats for user ${member.userId}:`, error);
+          // Trả về member response không có stats nếu có lỗi
+          return this.mapToMemberResponseDto(member);
+        }
+      })
+    );
+
+    // Sắp xếp theo tổng km giảm dần
+    memberResponses.sort((a, b) => {
+      const aDistance = a.runningStats?.distance || 0;
+      const bDistance = b.runningStats?.distance || 0;
+      return bDistance - aDistance;
+    });
 
     return { members: memberResponses, total };
   }

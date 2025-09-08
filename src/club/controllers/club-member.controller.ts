@@ -85,6 +85,7 @@ export class ClubMemberController {
   @ApiQuery({ name: 'limit', required: false, description: 'Số lượng item mỗi trang', type: Number })
   @ApiQuery({ name: 'role', required: false, enum: MemberRole, description: 'Lọc theo vai trò' })
   @ApiQuery({ name: 'status', required: false, enum: MemberStatus, description: 'Lọc theo trạng thái' })
+  @ApiQuery({ name: 'sortBy', required: false, description: 'Sắp xếp theo: week hoặc month', type: String })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Lấy danh sách thành viên thành công',
@@ -109,9 +110,10 @@ export class ClubMemberController {
     @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
     @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 20,
     @Query('role') role?: MemberRole,
-    @Query('status') status?: MemberStatus
+    @Query('status') status?: MemberStatus,
+    @Query('sortBy') sortBy?: string
   ): Promise<{ members: MemberResponseDto[]; total: number }> {
-    return this.clubMemberService.getMembers(clubId, req.user.userId, page, limit, role, status);
+    return this.clubMemberService.getMembers(clubId, req.user.userId, page, limit, role, status, sortBy);
   }
 
   @Put(':userId/role')

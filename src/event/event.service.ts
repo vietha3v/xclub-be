@@ -36,6 +36,7 @@ export class EventService {
     const event = this.eventRepository.create({
       ...createEventDto,
       eventCode,
+      createdBy: creatorUserId,
       status: EventStatus.UPCOMING,
       visibility: createEventDto.visibility || EventVisibility.CLUB_ONLY,
       startDate: new Date(createEventDto.startDate),
@@ -66,7 +67,7 @@ export class EventService {
   async findOne(id: string): Promise<Event> {
     const event = await this.eventRepository.findOne({ 
       where: { id, isDeleted: false },
-      relations: ['clubId']
+      relations: ['club']
     });
     
     if (!event) {

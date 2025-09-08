@@ -143,4 +143,27 @@ export class CreateEventDto {
   })
   @IsOptional()
   tags?: string[];
+
+  @ApiPropertyOptional({ 
+    description: 'Số lượng người tham gia tối đa',
+    example: 100
+  })
+  @IsOptional()
+  maxParticipants?: number;
+
+  @ApiPropertyOptional({ 
+    description: 'Phí đăng ký (VND)',
+    example: 50000
+  })
+  @IsOptional()
+  registrationFee?: number;
+
+  @ApiPropertyOptional({ 
+    description: 'Hình thức tổ chức',
+    enum: ['online', 'offline', 'hybrid'],
+    example: 'offline'
+  })
+  @IsOptional()
+  @IsEnum(['online', 'offline', 'hybrid'])
+  format?: 'online' | 'offline' | 'hybrid';
 }

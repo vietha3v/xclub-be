@@ -114,4 +114,11 @@ export class MemberResponseDto {
     avatar?: string;
     email: string;
   };
+
+  // Running statistics
+  @ApiPropertyOptional({ description: 'Thống kê chạy bộ theo tuần hoặc tháng' })
+  runningStats?: {
+    distance: number;
+    activityCount: number;
+  };
 }
