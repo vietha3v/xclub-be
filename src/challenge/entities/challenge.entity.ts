@@ -21,6 +21,11 @@ export enum ChallengeType {
   CUSTOM = 'custom'
 }
 
+export enum ChallengeCategory {
+  INDIVIDUAL = 'individual',
+  TEAM = 'team'
+}
+
 export enum ChallengeDifficulty {
   EASY = 'easy',
   MEDIUM = 'medium',
@@ -86,6 +91,14 @@ export class Challenge {
   })
   visibility: ChallengeVisibility;
 
+  @ApiProperty({ description: 'Phân loại thử thách' })
+  @Column({
+    type: 'enum',
+    enum: ChallengeCategory,
+    default: ChallengeCategory.INDIVIDUAL
+  })
+  category: ChallengeCategory;
+
   @ApiProperty({ description: 'ID câu lạc bộ tạo thử thách' })
   @Column({ nullable: true })
   @Index()
@@ -124,6 +137,22 @@ export class Challenge {
   @ApiPropertyOptional({ description: 'Số lượng người tham gia tối thiểu' })
   @Column({ type: 'int', nullable: true })
   minParticipants?: number;
+
+  @ApiPropertyOptional({ description: 'Số lượng thành viên tối đa mỗi team' })
+  @Column({ type: 'int', nullable: true })
+  maxTeamMembers?: number;
+
+  @ApiPropertyOptional({ description: 'Số lượng team tối đa' })
+  @Column({ type: 'int', nullable: true })
+  maxTeams?: number;
+
+  @ApiPropertyOptional({ description: 'Khoảng cách tối thiểu mỗi tracklog (km)' })
+  @Column({ type: 'decimal', precision: 8, scale: 2, nullable: true })
+  minTracklogDistance?: number;
+
+  @ApiPropertyOptional({ description: 'Khoảng cách tối đa mỗi cá nhân được tính (km)' })
+  @Column({ type: 'decimal', precision: 8, scale: 2, nullable: true })
+  maxIndividualContribution?: number;
 
   @ApiPropertyOptional({ description: 'Khoảng cách mục tiêu (mét)' })
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })

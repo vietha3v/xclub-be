@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsString, IsOptional, IsBoolean, IsNumber, IsUrl, IsDateString, IsArray } from 'class-validator';
-import { ChallengeType, ChallengeDifficulty, ChallengeVisibility, ChallengeStatus } from '../entities/challenge.entity';
+import { ChallengeType, ChallengeDifficulty, ChallengeVisibility, ChallengeStatus, ChallengeCategory } from '../entities/challenge.entity';
 
 export class CreateChallengeDto {
   @ApiProperty({ 
@@ -44,6 +44,15 @@ export class CreateChallengeDto {
   @IsOptional()
   @IsEnum(ChallengeVisibility)
   visibility?: ChallengeVisibility;
+
+  @ApiPropertyOptional({ 
+    description: 'Phân loại thử thách',
+    enum: ChallengeCategory,
+    default: ChallengeCategory.INDIVIDUAL
+  })
+  @IsOptional()
+  @IsEnum(ChallengeCategory)
+  category?: ChallengeCategory;
 
   @ApiPropertyOptional({ 
     description: 'ID câu lạc bộ tạo thử thách'
@@ -104,6 +113,38 @@ export class CreateChallengeDto {
   @IsOptional()
   @IsNumber()
   minParticipants?: number;
+
+  @ApiPropertyOptional({ 
+    description: 'Số lượng thành viên tối đa mỗi team',
+    example: 10
+  })
+  @IsOptional()
+  @IsNumber()
+  maxTeamMembers?: number;
+
+  @ApiPropertyOptional({ 
+    description: 'Số lượng team tối đa',
+    example: 20
+  })
+  @IsOptional()
+  @IsNumber()
+  maxTeams?: number;
+
+  @ApiPropertyOptional({ 
+    description: 'Khoảng cách tối thiểu mỗi tracklog (km)',
+    example: 5
+  })
+  @IsOptional()
+  @IsNumber()
+  minTracklogDistance?: number;
+
+  @ApiPropertyOptional({ 
+    description: 'Khoảng cách tối đa mỗi cá nhân được tính (km)',
+    example: 50
+  })
+  @IsOptional()
+  @IsNumber()
+  maxIndividualContribution?: number;
 
   @ApiPropertyOptional({ 
     description: 'Khoảng cách mục tiêu (mét)',

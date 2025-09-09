@@ -3,6 +3,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Challenge } from './challenge.entity';
 
 export enum ParticipantStatus {
+  PENDING = 'pending',
   ACTIVE = 'active',
   COMPLETED = 'completed',
   DROPPED = 'dropped',
@@ -32,7 +33,7 @@ export class ChallengeParticipant {
   @Column({
     type: 'enum',
     enum: ParticipantStatus,
-    default: ParticipantStatus.ACTIVE
+    default: ParticipantStatus.PENDING
   })
   status: ParticipantStatus;
 

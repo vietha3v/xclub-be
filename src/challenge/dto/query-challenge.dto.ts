@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsEnum, IsString, IsNumber, IsBoolean } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ChallengeStatus, ChallengeType, ChallengeDifficulty, ChallengeVisibility } from '../entities/challenge.entity';
+import { ChallengeStatus, ChallengeType, ChallengeDifficulty, ChallengeVisibility, ChallengeCategory } from '../entities/challenge.entity';
 
 export class QueryChallengeDto {
   @ApiPropertyOptional({ description: 'Trang hiện tại', example: 1 })
@@ -43,6 +43,11 @@ export class QueryChallengeDto {
   @IsOptional()
   @IsEnum(ChallengeVisibility)
   visibility?: ChallengeVisibility;
+
+  @ApiPropertyOptional({ description: 'Phân loại thử thách', enum: ChallengeCategory })
+  @IsOptional()
+  @IsEnum(ChallengeCategory)
+  category?: ChallengeCategory;
 
   @ApiPropertyOptional({ 
     description: 'ID câu lạc bộ',

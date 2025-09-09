@@ -18,7 +18,8 @@ import { ChallengeService } from './challenge.service';
 import { CreateChallengeDto } from './dto/create-challenge.dto';
 import { UpdateChallengeDto } from './dto/update-challenge.dto';
 import { QueryChallengeDto } from './dto/query-challenge.dto';
-import { Challenge, ChallengeStatus, ChallengeType } from './entities/challenge.entity';
+import { Challenge, ChallengeStatus, ChallengeType, ChallengeCategory } from './entities/challenge.entity';
+import { ChallengeParticipant } from './entities/challenge-participant.entity';
 
 @ApiTags('🏆 Quản lý thử thách')
 @Controller('challenges')
@@ -43,6 +44,14 @@ export class ChallengeController {
 
   @Get()
   @ApiOperation({ summary: 'Lấy danh sách thử thách với phân trang và filter' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Trang hiện tại (mặc định: 1)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Số lượng mỗi trang (mặc định: 10)' })
+  @ApiQuery({ name: 'search', required: false, type: String, description: 'Từ khóa tìm kiếm' })
+  @ApiQuery({ name: 'status', required: false, enum: ChallengeStatus, description: 'Trạng thái thử thách' })
+  @ApiQuery({ name: 'type', required: false, enum: ChallengeType, description: 'Loại thử thách' })
+  @ApiQuery({ name: 'category', required: false, enum: ChallengeCategory, description: 'Phân loại thử thách' })
+  @ApiQuery({ name: 'clubId', required: false, type: String, description: 'ID câu lạc bộ' })
+  @ApiQuery({ name: 'eventId', required: false, type: String, description: 'ID sự kiện' })
   @ApiResponse({ 
     status: 200, 
     description: 'Danh sách thử thách',
@@ -81,6 +90,63 @@ export class ChallengeController {
     return this.challengeService.getStats();
   }
 
+  @Get(':id/results')
+  @ApiOperation({ summary: 'Lấy kết quả chi tiết thử thách' })
+  @ApiParam({ name: 'id', description: 'ID của thử thách' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Kết quả chi tiết thử thách',
+    schema: {
+      type: 'object',
+      properties: {
+        challenge: { $ref: '#/components/schemas/Challenge' },
+        participants: { type: 'array', items: { $ref: '#/components/schemas/ChallengeParticipant' } },
+        leaderboard: { type: 'array', items: { $ref: '#/components/schemas/ChallengeLeaderboard' } },
+        stats: {
+          type: 'object',
+          properties: {
+            totalParticipants: { type: 'number' },
+            completedParticipants: { type: 'number' },
+            averageScore: { type: 'number' },
+            highestScore: { type: 'number' },
+            completionRate: { type: 'number' }
+          }
+        }
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
+  @ApiResponse({ status: 404, description: 'Thử thách không tồn tại' })
+  async getChallengeResults(@Param('id') id: string) {
+    return this.challengeService.getChallengeResults(id);
+  }
+
+  @Get(':id/completion-stats')
+  @ApiOperation({ summary: 'Lấy thống kê hoàn thành thử thách' })
+  @ApiParam({ name: 'id', description: 'ID của thử thách' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Thống kê hoàn thành',
+    schema: {
+      type: 'object',
+      properties: {
+        totalParticipants: { type: 'number' },
+        completedParticipants: { type: 'number' },
+        pendingParticipants: { type: 'number' },
+        activeParticipants: { type: 'number' },
+        completionRate: { type: 'number' },
+        averageCompletionTime: { type: 'number' },
+        fastestCompletion: { type: 'number' },
+        slowestCompletion: { type: 'number' }
+      }
+    }
+  })
+  @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
+  @ApiResponse({ status: 404, description: 'Thử thách không tồn tại' })
+  async getCompletionStats(@Param('id') id: string) {
+    return this.challengeService.getCompletionStats(id);
+  }
+
   @Get('search')
   @ApiOperation({ summary: 'Tìm kiếm thử thách' })
   @ApiQuery({ name: 'q', required: true, description: 'Từ khóa tìm kiếm' })
@@ -99,19 +165,6 @@ export class ChallengeController {
     return this.challengeService.search(searchTerm, limit);
   }
 
-  @Get('club/:clubId')
-  @ApiOperation({ summary: 'Lấy thử thách theo câu lạc bộ' })
-  @ApiParam({ name: 'clubId', description: 'ID của câu lạc bộ' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Số lượng kết quả (mặc định: 10)' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Danh sách thử thách theo câu lạc bộ',
-    type: [Challenge]
-  })
-  @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
-  async findByClub(@Param('clubId') clubId: string, @Query('limit') limit: number = 10) {
-    return this.challengeService.findByClub(clubId, limit);
-  }
 
   @Get('type/:type')
   @ApiOperation({ summary: 'Lấy thử thách theo loại' })
@@ -220,6 +273,52 @@ export class ChallengeController {
   @ApiResponse({ status: 404, description: 'Thử thách không tồn tại' })
   async leaveChallenge(@Req() req, @Param('id') id: string): Promise<Challenge> {
     return this.challengeService.leaveChallenge(id, req.user.userId);
+  }
+
+  @Post(':id/participants/:userId/approve')
+  @ApiOperation({ summary: 'Duyệt người tham gia thử thách' })
+  @ApiParam({ name: 'id', description: 'ID của thử thách' })
+  @ApiParam({ name: 'userId', description: 'ID của người dùng' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Duyệt thành công',
+    type: Challenge
+  })
+  @ApiResponse({ status: 400, description: 'Không thể duyệt' })
+  @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
+  @ApiResponse({ status: 404, description: 'Thử thách hoặc người tham gia không tồn tại' })
+  async approveParticipant(@Req() req, @Param('id') id: string, @Param('userId') userId: string): Promise<Challenge> {
+    return this.challengeService.approveParticipant(id, userId, req.user.userId);
+  }
+
+  @Post(':id/participants/:userId/reject')
+  @ApiOperation({ summary: 'Từ chối người tham gia thử thách' })
+  @ApiParam({ name: 'id', description: 'ID của thử thách' })
+  @ApiParam({ name: 'userId', description: 'ID của người dùng' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Từ chối thành công',
+    type: Challenge
+  })
+  @ApiResponse({ status: 400, description: 'Không thể từ chối' })
+  @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
+  @ApiResponse({ status: 404, description: 'Thử thách hoặc người tham gia không tồn tại' })
+  async rejectParticipant(@Req() req, @Param('id') id: string, @Param('userId') userId: string): Promise<Challenge> {
+    return this.challengeService.rejectParticipant(id, userId, req.user.userId);
+  }
+
+  @Get(':id/participants/pending')
+  @ApiOperation({ summary: 'Lấy danh sách người tham gia chờ duyệt' })
+  @ApiParam({ name: 'id', description: 'ID của thử thách' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Danh sách người tham gia chờ duyệt',
+    type: [ChallengeParticipant]
+  })
+  @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
+  @ApiResponse({ status: 404, description: 'Thử thách không tồn tại' })
+  async getPendingParticipants(@Param('id') id: string) {
+    return this.challengeService.getPendingParticipants(id);
   }
 
   @Delete(':id')

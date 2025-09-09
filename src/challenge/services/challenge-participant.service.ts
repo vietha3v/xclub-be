@@ -54,7 +54,7 @@ export class ChallengeParticipantService {
     const participant = this.participantRepository.create({
       challengeId,
       userId,
-      status: ParticipantStatus.ACTIVE,
+      status: challenge.requireApproval ? ParticipantStatus.PENDING : ParticipantStatus.ACTIVE,
       currentProgress: 0,
       currentStreak: 0,
       joinedAt: new Date(),
@@ -222,5 +222,60 @@ export class ChallengeParticipantService {
     }
 
     return score;
+  }
+
+  async approveParticipant(challengeId: string, userId: string): Promise<ChallengeParticipant> {
+    const participant = await this.participantRepository.findOne({
+      where: { challengeId, userId, isDeleted: false }
+    });
+
+    if (!participant) {
+      throw new NotFoundException('Người tham gia không tồn tại');
+    }
+
+    if (participant.status !== ParticipantStatus.PENDING) {
+      throw new BadRequestException('Chỉ có thể duyệt người tham gia đang chờ duyệt');
+    }
+
+    participant.status = ParticipantStatus.ACTIVE;
+    const savedParticipant = await this.participantRepository.save(participant);
+
+    // Cập nhật số người tham gia trong challenge
+    await this.updateChallengeParticipantCount(challengeId);
+
+    return savedParticipant;
+  }
+
+  async rejectParticipant(challengeId: string, userId: string): Promise<void> {
+    const participant = await this.participantRepository.findOne({
+      where: { challengeId, userId, isDeleted: false }
+    });
+
+    if (!participant) {
+      throw new NotFoundException('Người tham gia không tồn tại');
+    }
+
+    if (participant.status !== ParticipantStatus.PENDING) {
+      throw new BadRequestException('Chỉ có thể từ chối người tham gia đang chờ duyệt');
+    }
+
+    // Xóa mềm participant
+    participant.isDeleted = true;
+    participant.deletedAt = new Date();
+    await this.participantRepository.save(participant);
+
+    // Cập nhật số người tham gia trong challenge
+    await this.updateChallengeParticipantCount(challengeId);
+  }
+
+  async getPendingParticipants(challengeId: string): Promise<ChallengeParticipant[]> {
+    return await this.participantRepository.find({
+      where: { 
+        challengeId, 
+        status: ParticipantStatus.PENDING, 
+        isDeleted: false 
+      },
+      order: { joinedAt: 'ASC' }
+    });
   }
 }
