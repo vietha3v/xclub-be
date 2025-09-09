@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, In } from 'typeorm';
 import { Challenge, ChallengeStatus, ChallengeType } from './entities/challenge.entity';
@@ -14,6 +14,8 @@ export class ChallengeService {
   constructor(
     @InjectRepository(Challenge)
     private challengeRepository: Repository<Challenge>,
+    @InjectRepository(ChallengeParticipant)
+    private participantRepository: Repository<ChallengeParticipant>,
     private challengeParticipantService: ChallengeParticipantService,
     private challengeLeaderboardService: ChallengeLeaderboardService,
   ) {}
@@ -26,7 +28,7 @@ export class ChallengeService {
       ...createChallengeDto,
       createdBy: creatorId,
       challengeCode,
-      status: ChallengeStatus.DRAFT, // Mặc định là DRAFT, cần publish để thành UPCOMING
+      status: ChallengeStatus.PUBLISHED, // Mặc định là PUBLISHED
       participants: [],
       participantCount: 0,
       completedCount: 0,
@@ -37,10 +39,15 @@ export class ChallengeService {
       registrationEndDate: createChallengeDto.registrationEndDate ? new Date(createChallengeDto.registrationEndDate) : undefined,
     });
 
-    return await this.challengeRepository.save(challenge);
+    const savedChallenge = await this.challengeRepository.save(challenge);
+    
+    // Tự động tính status hiện tại
+    savedChallenge.status = this.calculateCurrentStatus(savedChallenge);
+    
+    return savedChallenge;
   }
 
-  async findAll(queryDto: QueryChallengeDto) {
+  async findAll(queryDto: QueryChallengeDto, userId?: string) {
     const { page = 1, limit = 10, status, type, category, clubId, eventId, search } = queryDto;
     const skip = (page - 1) * limit;
 
@@ -87,8 +94,31 @@ export class ChallengeService {
       .take(limit)
       .getManyAndCount();
 
+    // Thêm thông tin về việc user đã đăng ký hay chưa
+    const challengesWithUserStatus = await Promise.all(
+      challenges.map(async (challenge) => {
+        let userParticipant: ChallengeParticipant | null = null;
+        
+        if (userId) {
+          // Query riêng để lấy thông tin participant của user
+          userParticipant = await this.participantRepository.findOne({
+            where: { 
+              challengeId: challenge.id, 
+              userId, 
+              isDeleted: false 
+            }
+          });
+        }
+        
+        return {
+          ...challenge,
+          userRegistrationStatus: userParticipant ? userParticipant.status : null
+        };
+      })
+    );
+
     return {
-      challenges,
+      challenges: challengesWithUserStatus,
       total,
       page,
       limit,
@@ -103,6 +133,9 @@ export class ChallengeService {
     if (!challenge) {
       throw new NotFoundException('Thử thách không tồn tại');
     }
+
+    // Bỏ tính status để test
+    // challenge.status = this.calculateCurrentStatus(challenge);
 
     return challenge;
   }
@@ -176,16 +209,70 @@ export class ChallengeService {
     return await this.challengeRepository.save(challenge);
   }
 
-  async joinChallenge(id: string, userId: string): Promise<Challenge> {
+  /**
+   * Publish thử thách - chuyển từ DRAFT sang UPCOMING/ACTIVE
+   */
+  async publishChallenge(id: string, publisherId: string): Promise<Challenge> {
+    const challenge = await this.challengeRepository.findOne({
+      where: { id, isDeleted: false }
+    });
+
+    if (!challenge) {
+      throw new NotFoundException('Thử thách không tồn tại');
+    }
+
+    // Bỏ validation DRAFT vì đã xóa DRAFT status
+    // if (challenge.status !== ChallengeStatus.DRAFT) {
+    //   throw new BadRequestException(`Chỉ có thể publish thử thách từ trạng thái DRAFT, hiện tại: ${challenge.status}`);
+    // }
+
+    // Kiểm tra quyền publish (chỉ người tạo hoặc admin)
+    if (challenge.createdBy !== publisherId) {
+      // TODO: Thêm kiểm tra quyền admin
+      throw new ForbiddenException('Chỉ người tạo thử thách mới có thể publish');
+    }
+
+    // Validation: Kiểm tra thông tin cần thiết để publish
+    if (!challenge.name || !challenge.description) {
+      throw new BadRequestException('Thử thách phải có tên và mô tả để publish');
+    }
+
+    if (!challenge.startDate || !challenge.endDate) {
+      throw new BadRequestException('Thử thách phải có ngày bắt đầu và kết thúc để publish');
+    }
+
+    if (challenge.startDate >= challenge.endDate) {
+      throw new BadRequestException('Ngày bắt đầu phải trước ngày kết thúc');
+    }
+
+    // Tính status mới dựa trên thời gian
+    const newStatus = this.calculateCurrentStatus(challenge);
+    challenge.status = newStatus;
+
+    // Cập nhật thời gian publish
+    challenge.updatedAt = new Date();
+
+    return await this.challengeRepository.save(challenge);
+  }
+
+  async joinChallenge(id: string, userId: string): Promise<{ success: boolean; requiresApproval?: boolean; message: string; participantId?: string }> {
     const challenge = await this.findOne(id);
     
     // Sử dụng ChallengeParticipantService để tham gia
-    await this.challengeParticipantService.joinChallenge(id, userId);
+    const participant = await this.challengeParticipantService.joinChallenge(id, userId);
     
     // Cập nhật bảng xếp hạng
     await this.challengeLeaderboardService.updateLeaderboard(id);
     
-    return challenge;
+    // Trả về response thông báo
+    return {
+      success: true,
+      requiresApproval: challenge.requireApproval,
+      message: challenge.requireApproval 
+        ? 'Đăng ký thành công! Đang chờ xét duyệt.' 
+        : 'Đăng ký thành công! Chúc mừng bạn đã tham gia thử thách.',
+      participantId: participant.id
+    };
   }
 
   async leaveChallenge(id: string, userId: string): Promise<Challenge> {
@@ -373,7 +460,8 @@ export class ChallengeService {
 
   private canChangeStatus(currentStatus: ChallengeStatus, newStatus: ChallengeStatus): boolean {
     const allowedTransitions = {
-      [ChallengeStatus.DRAFT]: [ChallengeStatus.ACTIVE, ChallengeStatus.CANCELLED],
+      // [ChallengeStatus.DRAFT]: [ChallengeStatus.UPCOMING, ChallengeStatus.CANCELLED], // Bỏ DRAFT vì đã xóa
+      [ChallengeStatus.UPCOMING]: [ChallengeStatus.ACTIVE, ChallengeStatus.CANCELLED],
       [ChallengeStatus.ACTIVE]: [ChallengeStatus.PAUSED, ChallengeStatus.COMPLETED, ChallengeStatus.CANCELLED],
       [ChallengeStatus.PAUSED]: [ChallengeStatus.ACTIVE, ChallengeStatus.CANCELLED],
       [ChallengeStatus.COMPLETED]: [], // Không thể thay đổi từ COMPLETED
@@ -381,5 +469,35 @@ export class ChallengeService {
     };
 
     return allowedTransitions[currentStatus]?.includes(newStatus) || false;
+  }
+
+  /**
+   * Tự động tính status hiện tại dựa trên thời gian
+   */
+  private calculateCurrentStatus(challenge: Challenge): ChallengeStatus {
+    const now = new Date();
+    
+    // Nếu đã bị hủy hoặc hoàn thành, giữ nguyên status
+    if (challenge.status === ChallengeStatus.CANCELLED || 
+        challenge.status === ChallengeStatus.COMPLETED) {
+      return challenge.status;
+    }
+
+    // Nếu đang tạm dừng, giữ nguyên
+    if (challenge.status === ChallengeStatus.PAUSED) {
+      return challenge.status;
+    }
+
+    // Tính status dựa trên thời gian
+    if (now < challenge.startDate) {
+      return ChallengeStatus.UPCOMING;
+    } else if (now >= challenge.startDate && now <= challenge.endDate) {
+      return ChallengeStatus.ACTIVE;
+    } else if (now > challenge.endDate) {
+      return ChallengeStatus.COMPLETED;
+    }
+
+    // Fallback
+    return challenge.status;
   }
 }

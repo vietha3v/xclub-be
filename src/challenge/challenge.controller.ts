@@ -66,8 +66,8 @@ export class ChallengeController {
     }
   })
   @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
-  async findAll(@Query() queryDto: QueryChallengeDto) {
-    return this.challengeService.findAll(queryDto);
+  async findAll(@Query() queryDto: QueryChallengeDto, @Req() req) {
+    return this.challengeService.findAll(queryDto, req.user?.userId);
   }
 
   @Get('stats')
@@ -244,19 +244,42 @@ export class ChallengeController {
     return this.challengeService.changeStatus(id, status);
   }
 
+  @Post(':id/publish')
+  @ApiOperation({ summary: 'Publish thử thách (chuyển từ DRAFT sang UPCOMING/ACTIVE)' })
+  @ApiParam({ name: 'id', description: 'ID của thử thách' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Publish thử thách thành công',
+    type: Challenge
+  })
+  @ApiResponse({ status: 400, description: 'Không thể publish thử thách' })
+  @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
+  @ApiResponse({ status: 404, description: 'Thử thách không tồn tại' })
+  async publishChallenge(@Req() req, @Param('id') id: string): Promise<Challenge> {
+    return this.challengeService.publishChallenge(id, req.user.userId);
+  }
+
   @Post(':id/join')
   @ApiOperation({ summary: 'Đăng ký tham gia thử thách' })
   @ApiParam({ name: 'id', description: 'ID của thử thách' })
   @ApiResponse({ 
     status: 200, 
     description: 'Đăng ký thành công',
-    type: Challenge
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', description: 'Trạng thái đăng ký' },
+        requiresApproval: { type: 'boolean', description: 'Có cần xét duyệt không' },
+        message: { type: 'string', description: 'Thông báo kết quả' },
+        participantId: { type: 'string', description: 'ID người tham gia' }
+      }
+    }
   })
   @ApiResponse({ status: 400, description: 'Không thể đăng ký tham gia' })
   @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
   @ApiResponse({ status: 404, description: 'Thử thách không tồn tại' })
   @ApiResponse({ status: 409, description: 'Đã tham gia thử thách này' })
-  async joinChallenge(@Req() req, @Param('id') id: string): Promise<Challenge> {
+  async joinChallenge(@Req() req, @Param('id') id: string) {
     return this.challengeService.joinChallenge(id, req.user.userId);
   }
 

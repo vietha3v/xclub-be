@@ -7,7 +7,6 @@ export enum ChallengeStatus {
   PAUSED = 'paused',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
-  DRAFT = 'draft',
   PUBLISHED = 'published'
 }
 
@@ -71,7 +70,7 @@ export class Challenge {
   @Column({
     type: 'enum',
     enum: ChallengeStatus,
-    default: ChallengeStatus.DRAFT
+    default: ChallengeStatus.PUBLISHED
   })
   status: ChallengeStatus;
 
