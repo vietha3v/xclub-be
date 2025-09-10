@@ -255,11 +255,21 @@ export class ChallengeService {
     return await this.challengeRepository.save(challenge);
   }
 
-  async joinChallenge(id: string, userId: string): Promise<{ success: boolean; requiresApproval?: boolean; message: string; participantId?: string }> {
+  async joinChallenge(id: string, userId: string, autoApprovalPassword?: string): Promise<{ success: boolean; requiresApproval?: boolean; message: string; participantId?: string }> {
     const challenge = await this.findOne(id);
     
-    // Sử dụng ChallengeParticipantService để tham gia
-    const participant = await this.challengeParticipantService.joinChallenge(id, userId);
+    // Kiểm tra mật khẩu phê duyệt tự động nếu có
+    let autoApproved = false;
+    if (!challenge.allowFreeRegistration && autoApprovalPassword && challenge.autoApprovalPassword) {
+      if (autoApprovalPassword === challenge.autoApprovalPassword) {
+        autoApproved = true;
+      } else {
+        throw new BadRequestException('Mật khẩu phê duyệt không đúng');
+      }
+    }
+    
+    // Sử dụng ChallengeParticipantService để tham gia với trạng thái phù hợp
+    const participant = await this.challengeParticipantService.joinChallenge(id, userId, autoApproved);
     
     // Cập nhật bảng xếp hạng
     await this.challengeLeaderboardService.updateLeaderboard(id);
@@ -267,10 +277,12 @@ export class ChallengeService {
     // Trả về response thông báo
     return {
       success: true,
-      requiresApproval: challenge.requireApproval,
-      message: challenge.requireApproval 
-        ? 'Đăng ký thành công! Đang chờ xét duyệt.' 
-        : 'Đăng ký thành công! Chúc mừng bạn đã tham gia thử thách.',
+      requiresApproval: !challenge.allowFreeRegistration && !autoApproved,
+      message: autoApproved 
+        ? 'Đăng ký thành công! Chúc mừng bạn đã tham gia thử thách.'
+        : !challenge.allowFreeRegistration 
+          ? 'Đăng ký thành công! Đang chờ xét duyệt.' 
+          : 'Đăng ký thành công! Chúc mừng bạn đã tham gia thử thách.',
       participantId: participant.id
     };
   }
@@ -401,7 +413,7 @@ export class ChallengeService {
     const challenge = await this.findOne(challengeId);
     
     // Kiểm tra thử thách có yêu cầu phê duyệt không
-    if (!challenge.requireApproval) {
+    if (challenge.allowFreeRegistration) {
       throw new BadRequestException('Thử thách này không yêu cầu phê duyệt');
     }
 

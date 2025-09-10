@@ -201,9 +201,14 @@ export class Challenge {
   @Column({ nullable: true })
   achievementId?: string;
 
+
   @ApiProperty({ description: 'Điểm thưởng' })
   @Column({ type: 'int', default: 0 })
   points: number;
+
+  @ApiPropertyOptional({ description: 'Có cấp giấy chứng nhận điện tử' })
+  @Column({ default: false })
+  hasDigitalCertificate: boolean;
 
   @ApiPropertyOptional({ description: 'Điều kiện thử thách (JSON)' })
   @Column({ type: 'jsonb', nullable: true })
@@ -249,17 +254,14 @@ export class Challenge {
   @Column({ type: 'int', default: 0 })
   completedCount: number;
 
-  @ApiProperty({ description: 'Cho phép đăng ký' })
+  @ApiProperty({ description: 'Cho phép đăng ký tự do' })
   @Column({ default: true })
-  allowRegistration: boolean;
+  allowFreeRegistration: boolean;
 
-  @ApiProperty({ description: 'Yêu cầu phê duyệt tham gia' })
-  @Column({ default: false })
-  requireApproval: boolean;
+  @ApiPropertyOptional({ description: 'Mật khẩu phê duyệt tự động' })
+  @Column({ nullable: true })
+  autoApprovalPassword?: string;
 
-  @ApiProperty({ description: 'Cho phép rút lui' })
-  @Column({ default: true })
-  allowWithdrawal: boolean;
 
   @ApiProperty({ description: 'Trạng thái xóa mềm' })
   @Column({ default: false })
@@ -280,4 +282,5 @@ export class Challenge {
   @ApiProperty({ description: 'Thời gian cập nhật' })
   @UpdateDateColumn()
   updatedAt: Date;
+
 }

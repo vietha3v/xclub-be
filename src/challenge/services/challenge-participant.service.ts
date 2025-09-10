@@ -13,7 +13,7 @@ export class ChallengeParticipantService {
     private challengeRepository: Repository<Challenge>,
   ) {}
 
-  async joinChallenge(challengeId: string, userId: string): Promise<ChallengeParticipant> {
+  async joinChallenge(challengeId: string, userId: string, autoApproved: boolean = false): Promise<ChallengeParticipant> {
     // Bỏ hết validation để test API
     const challenge = await this.challengeRepository.findOne({
       where: { id: challengeId, isDeleted: false }
@@ -26,7 +26,7 @@ export class ChallengeParticipantService {
     const participant = this.participantRepository.create({
       challengeId,
       userId,
-      status: challenge.requireApproval ? ParticipantStatus.PENDING : ParticipantStatus.ACTIVE,
+      status: autoApproved || challenge.allowFreeRegistration ? ParticipantStatus.ACTIVE : ParticipantStatus.PENDING,
       currentProgress: 0,
       currentStreak: 0,
       joinedAt: new Date(),

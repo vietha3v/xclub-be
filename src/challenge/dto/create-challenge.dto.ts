@@ -241,6 +241,7 @@ export class CreateChallengeDto {
   @IsString()
   achievementId?: string;
 
+
   @ApiPropertyOptional({ 
     description: 'Điểm thưởng',
     example: 100,
@@ -249,6 +250,14 @@ export class CreateChallengeDto {
   @IsOptional()
   @IsNumber()
   points?: number = 0;
+
+  @ApiPropertyOptional({ 
+    description: 'Có cấp giấy chứng nhận điện tử',
+    example: false
+  })
+  @IsOptional()
+  @IsBoolean()
+  hasDigitalCertificate?: boolean;
 
   @ApiPropertyOptional({ 
     description: 'Điều kiện thử thách (JSON)',
@@ -289,26 +298,18 @@ export class CreateChallengeDto {
   tags?: string[];
 
   @ApiPropertyOptional({ 
-    description: 'Cho phép đăng ký',
+    description: 'Cho phép đăng ký tự do',
     default: true
   })
   @IsOptional()
   @IsBoolean()
-  allowRegistration?: boolean;
+  allowFreeRegistration?: boolean;
 
   @ApiPropertyOptional({ 
-    description: 'Yêu cầu phê duyệt tham gia',
-    default: false
+    description: 'Mật khẩu phê duyệt tự động'
   })
   @IsOptional()
-  @IsBoolean()
-  requireApproval?: boolean;
+  @IsString()
+  autoApprovalPassword?: string;
 
-  @ApiPropertyOptional({ 
-    description: 'Cho phép rút lui',
-    default: true
-  })
-  @IsOptional()
-  @IsBoolean()
-  allowWithdrawal?: boolean;
 }

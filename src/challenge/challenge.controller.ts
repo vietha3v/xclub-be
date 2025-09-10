@@ -279,8 +279,8 @@ export class ChallengeController {
   @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
   @ApiResponse({ status: 404, description: 'Thử thách không tồn tại' })
   @ApiResponse({ status: 409, description: 'Đã tham gia thử thách này' })
-  async joinChallenge(@Req() req, @Param('id') id: string) {
-    return this.challengeService.joinChallenge(id, req.user.userId);
+  async joinChallenge(@Req() req, @Param('id') id: string, @Body() body: { autoApprovalPassword?: string } = {}) {
+    return this.challengeService.joinChallenge(id, req.user.userId, body.autoApprovalPassword);
   }
 
   @Post(':id/leave')
