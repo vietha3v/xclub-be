@@ -208,7 +208,7 @@ export class Challenge {
 
   @ApiPropertyOptional({ description: 'Có cấp giấy chứng nhận điện tử' })
   @Column({ default: false })
-  hasDigitalCertificate: boolean;
+  hasDigitalGiayChungNhan: boolean;
 
   @ApiPropertyOptional({ description: 'Điều kiện thử thách (JSON)' })
   @Column({ type: 'jsonb', nullable: true })

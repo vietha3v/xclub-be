@@ -257,7 +257,7 @@ export class CreateChallengeDto {
   })
   @IsOptional()
   @IsBoolean()
-  hasDigitalCertificate?: boolean;
+  hasDigitalGiayChungNhan?: boolean;
 
   @ApiPropertyOptional({ 
     description: 'Điều kiện thử thách (JSON)',

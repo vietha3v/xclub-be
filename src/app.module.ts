@@ -16,6 +16,9 @@ import { PaymentModule } from './payment/payment.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SocialModule } from './social/social.module';
 import { MediaModule } from './media/media.module';
+import { MedalTemplateModule } from './medal-template/medal-template.module';
+import { CertificateTemplateModule } from './certificate-template/certificate-template.module';
+import { ChallengeCategoryModule } from './challenge-category/challenge-category.module';
 
 @Module({
   imports: [
@@ -70,6 +73,9 @@ import { MediaModule } from './media/media.module';
                                 AnalyticsModule,
                 SocialModule,
                 MediaModule,
+                MedalTemplateModule,
+                CertificateTemplateModule,
+                ChallengeCategoryModule,
   ],
 })
 export class AppModule {}

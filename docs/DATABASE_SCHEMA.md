@@ -926,4 +926,226 @@ Hệ thống X-Club được thiết kế với **16 bảng chính** tập trung
 - **Thông báo và thanh toán** (Notifications, Payments)
 - **Phân tích và tương tác xã hội** (Analytics, Social, Media)
 
+### 18. Bảng Medal_Templates (Mẫu huy chương)
+```sql
+CREATE TABLE medal_templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    userId UUID REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    type VARCHAR(50) NOT NULL, -- gold, silver, bronze, participation, special
+    htmlTemplate TEXT NOT NULL,
+    cssStyles TEXT NOT NULL,
+    iconImage TEXT,
+    color VARCHAR(7) DEFAULT '#FFD700',
+    variables JSONB NOT NULL, -- Array of template variables
+    isPublic BOOLEAN DEFAULT false,
+    isActive BOOLEAN DEFAULT true,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### 19. Bảng GiayChungNhan_Templates (Mẫu giấy chứng nhận)
+```sql
+CREATE TABLE certificate_templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    userId UUID REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    type VARCHAR(50) NOT NULL, -- completion, achievement, participation, winner
+    htmlTemplate TEXT NOT NULL,
+    cssStyles TEXT NOT NULL,
+    backgroundImage TEXT,
+    logoImage TEXT,
+    signatureImage TEXT,
+    variables JSONB NOT NULL, -- Array of template variables
+    isPublic BOOLEAN DEFAULT false,
+    isActive BOOLEAN DEFAULT true,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### 20. Bảng Challenge_Categories (Danh mục thử thách)
+```sql
+CREATE TABLE challenge_categories (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    challengeId UUID REFERENCES challenges(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    type VARCHAR(50) NOT NULL, -- distance, time, repetition, custom
+    unit VARCHAR(50) NOT NULL,
+    minValue DECIMAL(10,2),
+    maxValue DECIMAL(10,2),
+    isRequired BOOLEAN DEFAULT false,
+    isActive BOOLEAN DEFAULT true,
+    sortOrder INTEGER DEFAULT 0,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### 21. Bảng Generated_Medals (Huy chương đã tạo)
+```sql
+CREATE TABLE generated_medals (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    templateId UUID REFERENCES medal_templates(id) ON DELETE CASCADE,
+    challengeId UUID REFERENCES challenges(id) ON DELETE CASCADE,
+    userId UUID REFERENCES users(id) ON DELETE CASCADE,
+    teamId UUID, -- Optional team reference
+    participantName VARCHAR(255) NOT NULL,
+    achievement VARCHAR(255) NOT NULL,
+    rank INTEGER,
+    medalUrl TEXT NOT NULL,
+    isVerified BOOLEAN DEFAULT false,
+    verificationCode VARCHAR(100) UNIQUE NOT NULL,
+    data JSONB, -- Additional medal data
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### 22. Bảng Generated_GiayChungNhans (Chứng chỉ đã tạo)
+```sql
+CREATE TABLE generated_certificates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    templateId UUID REFERENCES certificate_templates(id) ON DELETE CASCADE,
+    challengeId UUID REFERENCES challenges(id) ON DELETE CASCADE,
+    userId UUID REFERENCES users(id) ON DELETE CASCADE,
+    teamId UUID, -- Optional team reference
+    participantName VARCHAR(255) NOT NULL,
+    achievement VARCHAR(255) NOT NULL,
+    rank INTEGER,
+    certificateUrl TEXT NOT NULL,
+    pdfUrl TEXT,
+    isVerified BOOLEAN DEFAULT false,
+    verificationCode VARCHAR(100) UNIQUE NOT NULL,
+    data JSONB, -- Additional certificate data
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### 23. Bảng Challenge_Teams (Đội tham gia thử thách)
+```sql
+CREATE TABLE challenge_teams (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    challengeId UUID REFERENCES challenges(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    leaderId UUID REFERENCES users(id) ON DELETE CASCADE,
+    maxMembers INTEGER DEFAULT 10,
+    currentMembers INTEGER DEFAULT 1,
+    status VARCHAR(50) DEFAULT 'active', -- active, disbanded
+    isPublic BOOLEAN DEFAULT true,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### 24. Bảng Challenge_Team_Members (Thành viên đội thử thách)
+```sql
+CREATE TABLE challenge_team_members (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    teamId UUID REFERENCES challenge_teams(id) ON DELETE CASCADE,
+    userId UUID REFERENCES users(id) ON DELETE CASCADE,
+    role VARCHAR(50) DEFAULT 'member', -- leader, co_leader, member
+    joinedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(50) DEFAULT 'active', -- active, left, removed
+    UNIQUE(teamId, userId)
+);
+```
+
+### 25. Bảng Challenge_Team_Invitations (Lời mời tham gia đội)
+```sql
+CREATE TABLE challenge_team_invitations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    teamId UUID REFERENCES challenge_teams(id) ON DELETE CASCADE,
+    senderId UUID REFERENCES users(id) ON DELETE CASCADE,
+    receiverId UUID REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT,
+    status VARCHAR(50) DEFAULT 'pending', -- pending, accepted, rejected, expired
+    expiresAt TIMESTAMP,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(teamId, receiverId)
+);
+```
+
+### 26. Bảng Challenge_Team_Leaderboards (Bảng xếp hạng đội)
+```sql
+CREATE TABLE challenge_team_leaderboards (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    challengeId UUID REFERENCES challenges(id) ON DELETE CASCADE,
+    teamId UUID REFERENCES challenge_teams(id) ON DELETE CASCADE,
+    rank INTEGER NOT NULL,
+    score DECIMAL(10,2) NOT NULL,
+    progress DECIMAL(10,2) NOT NULL,
+    memberCount INTEGER DEFAULT 0,
+    lastUpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(challengeId, teamId)
+);
+```
+
+## Indexes cho các bảng mới
+
+```sql
+-- Medal Templates
+CREATE INDEX idx_medal_templates_user_id ON medal_templates(userId);
+CREATE INDEX idx_medal_templates_type ON medal_templates(type);
+CREATE INDEX idx_medal_templates_is_public ON medal_templates(isPublic);
+CREATE INDEX idx_medal_templates_is_active ON medal_templates(isActive);
+
+-- GiayChungNhan Templates
+CREATE INDEX idx_certificate_templates_user_id ON certificate_templates(userId);
+CREATE INDEX idx_certificate_templates_type ON certificate_templates(type);
+CREATE INDEX idx_certificate_templates_is_public ON certificate_templates(isPublic);
+CREATE INDEX idx_certificate_templates_is_active ON certificate_templates(isActive);
+
+-- Challenge Categories
+CREATE INDEX idx_challenge_categories_challenge_id ON challenge_categories(challengeId);
+CREATE INDEX idx_challenge_categories_type ON challenge_categories(type);
+CREATE INDEX idx_challenge_categories_is_active ON challenge_categories(isActive);
+CREATE INDEX idx_challenge_categories_sort_order ON challenge_categories(sortOrder);
+
+-- Generated Medals
+CREATE INDEX idx_generated_medals_template_id ON generated_medals(templateId);
+CREATE INDEX idx_generated_medals_challenge_id ON generated_medals(challengeId);
+CREATE INDEX idx_generated_medals_user_id ON generated_medals(userId);
+CREATE INDEX idx_generated_medals_team_id ON generated_medals(teamId);
+CREATE INDEX idx_generated_medals_verification_code ON generated_medals(verificationCode);
+
+-- Generated GiayChungNhans
+CREATE INDEX idx_generated_certificates_template_id ON generated_certificates(templateId);
+CREATE INDEX idx_generated_certificates_challenge_id ON generated_certificates(challengeId);
+CREATE INDEX idx_generated_certificates_user_id ON generated_certificates(userId);
+CREATE INDEX idx_generated_certificates_team_id ON generated_certificates(teamId);
+CREATE INDEX idx_generated_certificates_verification_code ON generated_certificates(verificationCode);
+
+-- Challenge Teams
+CREATE INDEX idx_challenge_teams_challenge_id ON challenge_teams(challengeId);
+CREATE INDEX idx_challenge_teams_leader_id ON challenge_teams(leaderId);
+CREATE INDEX idx_challenge_teams_status ON challenge_teams(status);
+CREATE INDEX idx_challenge_teams_is_public ON challenge_teams(isPublic);
+
+-- Challenge Team Members
+CREATE INDEX idx_challenge_team_members_team_id ON challenge_team_members(teamId);
+CREATE INDEX idx_challenge_team_members_user_id ON challenge_team_members(userId);
+CREATE INDEX idx_challenge_team_members_status ON challenge_team_members(status);
+
+-- Challenge Team Invitations
+CREATE INDEX idx_challenge_team_invitations_team_id ON challenge_team_invitations(teamId);
+CREATE INDEX idx_challenge_team_invitations_sender_id ON challenge_team_invitations(senderId);
+CREATE INDEX idx_challenge_team_invitations_receiver_id ON challenge_team_invitations(receiverId);
+CREATE INDEX idx_challenge_team_invitations_status ON challenge_team_invitations(status);
+
+-- Challenge Team Leaderboards
+CREATE INDEX idx_challenge_team_leaderboards_challenge_id ON challenge_team_leaderboards(challengeId);
+CREATE INDEX idx_challenge_team_leaderboards_team_id ON challenge_team_leaderboards(teamId);
+CREATE INDEX idx_challenge_team_leaderboards_rank ON challenge_team_leaderboards(rank);
+```
+
 Cấu trúc này đảm bảo tính mở rộng, hiệu suất cao và khả năng tích hợp tốt với các nền tảng thể thao bên ngoài.

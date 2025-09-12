@@ -28,7 +28,12 @@ X-Club là hệ thống quản lý câu lạc bộ chạy bộ với khả năng
 - [**Event Module**](./Event.md) - Sự kiện chạy bộ của câu lạc bộ
 - [**Race Module**](./Race.md) - Giải chạy chính thức
 - [**Challenge Module**](./Challenge.md) - Thử thách và thi đấu
+- [**Challenge Category Module**](./ChallengeCategory.md) - Danh mục thử thách (5K, 10K, Marathon, etc.)
 - [**Achievement Module**](./Achievement.md) - Huy chương, thành tích, gamification
+
+### 🏅 Template Designer
+- [**Medal Template Module**](./MedalTemplate.md) - Thiết kế mẫu huy chương với HTML/CSS
+- [**GiayChungNhan Template Module**](./GiayChungNhanTemplate.md) - Thiết kế mẫu giấy chứng nhận với HTML/CSS
 
 ### 🔗 Tích hợp & Dịch vụ
 - [**Integration Module**](./INTEGRATIONS.md) - **Tích hợp và đồng bộ dữ liệu từ nền tảng bên ngoài**
