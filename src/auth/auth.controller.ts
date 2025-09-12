@@ -302,9 +302,10 @@ export class AuthController {
     }
   })
   async oauthCallback(@Body() oauthData: any) {
+    console.log('OAuth callback result:66666666666666',oauthData);
     try {
       const { provider, profile } = oauthData;
-      
+      console.log('OAuth callback result:55555555555555',provider, profile);
       if (!provider || !profile) {
         throw new BadRequestException('Thiếu thông tin provider hoặc profile');
       }

@@ -63,7 +63,9 @@ export class CertificateTemplateController {
       }
     }
   })
-  async findAll(@Query() queryDto: QueryCertificateTemplateDto) {
+  async findAll(@Req() req, @Query() queryDto: QueryCertificateTemplateDto) {
+    // Tự động set userId từ JWT token để chỉ lấy giấy chứng nhận của user đang đăng nhập
+    queryDto.userId = req.user.userId;
     return this.certificateTemplateService.findAll(queryDto);
   }
 

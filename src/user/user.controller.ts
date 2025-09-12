@@ -85,7 +85,7 @@ export class UserController {
     schema: {
       type: 'object',
       properties: {
-        users: {
+        data: {
           type: 'array',
           items: { $ref: '#/components/schemas/UserProfileResponse' }
         },
@@ -103,7 +103,7 @@ export class UserController {
     @Query('search') search?: string,
     @Query('status') status?: UserStatus,
     @Query('experience') experience?: UserExperience
-  ): Promise<{ users: UserProfileResponse[]; total: number; page: number; limit: number }> {
+  ): Promise<{ data: UserProfileResponse[]; total: number; page: number; limit: number }> {
     return this.userService.findAll(page, limit, search, status, experience, req.user?.userId);
   }
 

@@ -140,12 +140,14 @@ export class ChallengeTeamService {
   /**
    * Lấy danh sách teams của thử thách
    */
-  async getTeamsByChallenge(challengeId: string): Promise<ChallengeTeam[]> {
-    return await this.teamRepository.find({
+  async getTeamsByChallenge(challengeId: string): Promise<{ data: ChallengeTeam[] }> {
+    const teams = await this.teamRepository.find({
       where: { challengeId, isDeleted: false },
       relations: ['members'],
       order: { totalDistance: 'DESC', createdAt: 'ASC' }
     });
+    
+    return { data: teams };
   }
 
   /**

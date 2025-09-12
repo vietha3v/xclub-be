@@ -63,7 +63,9 @@ export class MedalTemplateController {
       }
     }
   })
-  async findAll(@Query() queryDto: QueryMedalTemplateDto) {
+  async findAll(@Req() req, @Query() queryDto: QueryMedalTemplateDto) {
+    // Tự động set userId từ JWT token để chỉ lấy huy chương của user đang đăng nhập
+    queryDto.userId = req.user.userId;
     return this.medalTemplateService.findAll(queryDto);
   }
 

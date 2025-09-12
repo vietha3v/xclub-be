@@ -324,6 +324,7 @@ export class AuthService {
 
       const newUser = new User();
       newUser.email = email.toLowerCase();
+      newUser.username = email.toLowerCase(); // Username = email cho OAuth users
       newUser.firstName = firstName;
       newUser.lastName = lastName;
       newUser.avatar = profile.photos?.[0]?.value || profile.avatar;
@@ -332,6 +333,10 @@ export class AuthService {
       newUser.status = UserStatus.ACTIVE;
       newUser.isVerified = true; // OAuth đã xác thực
       newUser.isPublic = false;
+      
+      // Set password mặc định cho OAuth users (không thể đăng nhập bằng password)
+      const randomPassword = `oauth_${provider}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      newUser.password = await bcrypt.hash(randomPassword, 10);
       // Các trường khác sẽ có giá trị mặc định
 
       return await this.userRepository.save(newUser);

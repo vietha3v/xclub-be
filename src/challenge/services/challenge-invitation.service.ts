@@ -86,22 +86,26 @@ export class ChallengeInvitationService {
   /**
    * Lấy lời mời theo thử thách
    */
-  async getInvitationsByChallenge(challengeId: string): Promise<ChallengeInvitation[]> {
-    return await this.invitationRepository.find({
+  async getInvitationsByChallenge(challengeId: string): Promise<{ data: ChallengeInvitation[] }> {
+    const invitations = await this.invitationRepository.find({
       where: { challengeId, isDeleted: false },
       order: { createdAt: 'DESC' }
     });
+    
+    return { data: invitations };
   }
 
   /**
    * Lấy lời mời theo club
    */
-  async getInvitationsByClub(clubId: string): Promise<ChallengeInvitation[]> {
-    return await this.invitationRepository.find({
+  async getInvitationsByClub(clubId: string): Promise<{ data: ChallengeInvitation[] }> {
+    const invitations = await this.invitationRepository.find({
       where: { invitedClubId: clubId, isDeleted: false },
       relations: ['challenge'],
       order: { createdAt: 'DESC' }
     });
+    
+    return { data: invitations };
   }
 
   /**

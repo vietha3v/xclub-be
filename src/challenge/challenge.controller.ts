@@ -58,7 +58,7 @@ export class ChallengeController {
     schema: {
       type: 'object',
       properties: {
-        challenges: { type: 'array', items: { $ref: '#/components/schemas/Challenge' } },
+        data: { type: 'array', items: { $ref: '#/components/schemas/Challenge' } },
         total: { type: 'number', description: 'Tổng số thử thách' },
         page: { type: 'number', description: 'Trang hiện tại' },
         limit: { type: 'number', description: 'Số lượng mỗi trang' }

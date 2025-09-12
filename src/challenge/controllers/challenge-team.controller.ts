@@ -51,10 +51,15 @@ export class ChallengeTeamController {
   @ApiResponse({ 
     status: 200, 
     description: 'Danh sách teams',
-    type: [ChallengeTeam]
+    schema: {
+      type: 'object',
+      properties: {
+        data: { type: 'array', items: { $ref: '#/components/schemas/ChallengeTeam' } }
+      }
+    }
   })
   @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
-  async getTeams(@Param('challengeId') challengeId: string): Promise<ChallengeTeam[]> {
+  async getTeams(@Param('challengeId') challengeId: string): Promise<{ data: ChallengeTeam[] }> {
     return this.challengeTeamService.getTeamsByChallenge(challengeId);
   }
 

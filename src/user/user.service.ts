@@ -109,7 +109,7 @@ export class UserService {
     status?: UserStatus,
     experience?: UserExperience,
     currentUserId?: string
-  ): Promise<{ users: UserProfileResponse[]; total: number; page: number; limit: number }> {
+  ): Promise<{ data: UserProfileResponse[]; total: number; page: number; limit: number }> {
     try {
       // Kiểm tra quyền xem danh sách user
       if (currentUserId) {
@@ -170,7 +170,7 @@ export class UserService {
       }));
 
       return {
-        users: userProfiles,
+        data: userProfiles,
         total,
         page,
         limit

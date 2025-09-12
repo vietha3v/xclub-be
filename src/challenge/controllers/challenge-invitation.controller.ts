@@ -52,10 +52,15 @@ export class ChallengeInvitationController {
   @ApiResponse({ 
     status: 200, 
     description: 'Danh sách lời mời',
-    type: [ChallengeInvitation]
+    schema: {
+      type: 'object',
+      properties: {
+        data: { type: 'array', items: { $ref: '#/components/schemas/ChallengeInvitation' } }
+      }
+    }
   })
   @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
-  async getInvitationsByChallenge(@Param('challengeId') challengeId: string): Promise<ChallengeInvitation[]> {
+  async getInvitationsByChallenge(@Param('challengeId') challengeId: string): Promise<{ data: ChallengeInvitation[] }> {
     return this.challengeInvitationService.getInvitationsByChallenge(challengeId);
   }
 
@@ -65,10 +70,15 @@ export class ChallengeInvitationController {
   @ApiResponse({ 
     status: 200, 
     description: 'Danh sách lời mời',
-    type: [ChallengeInvitation]
+    schema: {
+      type: 'object',
+      properties: {
+        data: { type: 'array', items: { $ref: '#/components/schemas/ChallengeInvitation' } }
+      }
+    }
   })
   @ApiResponse({ status: 401, description: 'Không có quyền truy cập' })
-  async getInvitationsByClub(@Param('clubId') clubId: string): Promise<ChallengeInvitation[]> {
+  async getInvitationsByClub(@Param('clubId') clubId: string): Promise<{ data: ChallengeInvitation[] }> {
     return this.challengeInvitationService.getInvitationsByClub(clubId);
   }
 

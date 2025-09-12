@@ -118,7 +118,7 @@ export class ChallengeService {
     );
 
     return {
-      challenges: challengesWithUserStatus,
+      data: challengesWithUserStatus,
       total,
       page,
       limit,
