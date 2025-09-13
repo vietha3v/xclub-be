@@ -103,6 +103,18 @@ export class Challenge {
   @Index()
   clubId?: string;
 
+  @ApiPropertyOptional({ description: 'ID câu lạc bộ tạo thử thách (team challenge)' })
+  @Column({ nullable: true })
+  @Index()
+  createdByClubId?: string;
+
+  @ApiPropertyOptional({ description: 'Danh sách CLB được mời tham gia (team challenge)' })
+  @Column({ type: 'jsonb', nullable: true })
+  invitedClubs?: Array<{
+    clubId: string;
+    maxParticipants: number;
+  }>;
+
   @ApiPropertyOptional({ description: 'ID sự kiện liên quan' })
   @Column({ nullable: true })
   @Index()
@@ -210,6 +222,26 @@ export class Challenge {
   @Column({ default: false })
   hasDigitalGiayChungNhan: boolean;
 
+  @ApiPropertyOptional({ description: 'Có cấp giấy chứng nhận điện tử (alias)' })
+  @Column({ default: false })
+  hasDigitalCertificate: boolean;
+
+  @ApiPropertyOptional({ description: 'Có huy chương' })
+  @Column({ default: false })
+  hasMedals: boolean;
+
+  @ApiPropertyOptional({ description: 'Có giấy chứng nhận' })
+  @Column({ default: false })
+  hasCertificates: boolean;
+
+  @ApiPropertyOptional({ description: 'Danh sách ID template huy chương' })
+  @Column({ type: 'simple-array', nullable: true })
+  medalTemplateIds?: string[];
+
+  @ApiPropertyOptional({ description: 'Danh sách ID template giấy chứng nhận' })
+  @Column({ type: 'simple-array', nullable: true })
+  certificateTemplateIds?: string[];
+
   @ApiPropertyOptional({ description: 'Điều kiện thử thách (JSON)' })
   @Column({ type: 'jsonb', nullable: true })
   conditions?: any;
@@ -261,6 +293,16 @@ export class Challenge {
   @ApiPropertyOptional({ description: 'Mật khẩu phê duyệt tự động' })
   @Column({ nullable: true })
   autoApprovalPassword?: string;
+
+  @ApiPropertyOptional({ description: 'Danh sách hạng mục thử thách' })
+  @Column({ type: 'jsonb', nullable: true })
+  distanceCategories?: Array<{
+    id: string;
+    value: number;
+    unit: string;
+    name?: string;
+    difficulty: string;
+  }>;
 
 
   @ApiProperty({ description: 'Trạng thái xóa mềm' })

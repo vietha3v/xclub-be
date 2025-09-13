@@ -62,6 +62,31 @@ export class CreateChallengeDto {
   clubId?: string;
 
   @ApiPropertyOptional({ 
+    description: 'ID câu lạc bộ tạo thử thách (team challenge)'
+  })
+  @IsOptional()
+  @IsString()
+  createdByClubId?: string;
+
+  @ApiPropertyOptional({ 
+    description: 'Danh sách CLB được mời tham gia (team challenge)',
+    type: 'array',
+    items: {
+      type: 'object',
+      properties: {
+        clubId: { type: 'string' },
+        maxParticipants: { type: 'number' }
+      }
+    }
+  })
+  @IsOptional()
+  @IsArray()
+  invitedClubs?: Array<{
+    clubId: string;
+    maxParticipants: number;
+  }>;
+
+  @ApiPropertyOptional({ 
     description: 'ID sự kiện liên quan'
   })
   @IsOptional()
@@ -260,6 +285,46 @@ export class CreateChallengeDto {
   hasDigitalGiayChungNhan?: boolean;
 
   @ApiPropertyOptional({ 
+    description: 'Có cấp giấy chứng nhận điện tử (alias)',
+    example: false
+  })
+  @IsOptional()
+  @IsBoolean()
+  hasDigitalCertificate?: boolean;
+
+  @ApiPropertyOptional({ 
+    description: 'Có huy chương',
+    example: false
+  })
+  @IsOptional()
+  @IsBoolean()
+  hasMedals?: boolean;
+
+  @ApiPropertyOptional({ 
+    description: 'Có giấy chứng nhận',
+    example: false
+  })
+  @IsOptional()
+  @IsBoolean()
+  hasCertificates?: boolean;
+
+  @ApiPropertyOptional({ 
+    description: 'Danh sách ID template huy chương',
+    example: ['medal-template-1', 'medal-template-2']
+  })
+  @IsOptional()
+  @IsArray()
+  medalTemplateIds?: string[];
+
+  @ApiPropertyOptional({ 
+    description: 'Danh sách ID template giấy chứng nhận',
+    example: ['cert-template-1', 'cert-template-2']
+  })
+  @IsOptional()
+  @IsArray()
+  certificateTemplateIds?: string[];
+
+  @ApiPropertyOptional({ 
     description: 'Điều kiện thử thách (JSON)',
     example: { minPace: 6.0, maxHeartRate: 180 }
   })
@@ -311,5 +376,45 @@ export class CreateChallengeDto {
   @IsOptional()
   @IsString()
   autoApprovalPassword?: string;
+
+  @ApiPropertyOptional({ 
+    description: 'Thời gian bắt đầu (giờ)',
+    example: '08:00'
+  })
+  @IsOptional()
+  @IsString()
+  startTime?: string;
+
+  @ApiPropertyOptional({ 
+    description: 'Thời gian kết thúc (giờ)',
+    example: '18:00'
+  })
+  @IsOptional()
+  @IsString()
+  endTime?: string;
+
+  @ApiPropertyOptional({ 
+    description: 'Danh sách hạng mục thử thách',
+    type: 'array',
+    items: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        value: { type: 'number' },
+        unit: { type: 'string' },
+        name: { type: 'string' },
+        difficulty: { type: 'string' }
+      }
+    }
+  })
+  @IsOptional()
+  @IsArray()
+  distanceCategories?: Array<{
+    id: string;
+    value: number;
+    unit: string;
+    name?: string;
+    difficulty: string;
+  }>;
 
 }
